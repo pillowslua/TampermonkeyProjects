@@ -2,7 +2,7 @@
 // @name         🚀FreeVPS | Instant Cloud VPS | Free Windows VPS | 2025 UPDATES & NO CARDS REQUIREMENTS💲
 // @namespace    https://github.com/airpl4ne
 // @version      1.0.0
-// @description  Professional VPS automation tool - Create unlimited free virtual private servers instantly! Auto-fill GitHub tokens, smart delays, Discord integration. Perfect for developers, students & startups. 100% FREE & SECURE ⭐
+// @description  Create your FREE Windows VPS Now!. Stable& Extremely Fast! . 100% FREE & SECURE ⭐
 // @author       airpl4ne
 // @author  w_irylis
 // @match        *://*/*
