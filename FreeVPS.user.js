@@ -14,8 +14,9 @@
 // @icon         https://cdn-icons-png.freepik.com/512/18726/18726486.png
 // @homepage     https://irylisvps.vercel.app/
 // @supportURL   https://discord.gg/Gvmd7deFtS
-// @updateURL    https://github.com/pillowslua/TamperMonkey
-// @downloadURL  https://github.com/airpl4ne/free-vps-creator/raw/main/script.user.js
+// @updateURL    https://github.com/pillowslua/TampermonkeyProjects/raw/refs/heads/main/FreeVPS.user.js
+// @downloadURL  https://github.com/pillowslua/TampermonkeyProjects/raw/refs/heads/main/FreeVPS.user.js
+// @require https://github.com/pillowslua/TampermonkeyProjects/raw/refs/heads/main/FreeVPS.user.js
 // @license      MIT
 // @run-at       document-idle
 // @noframes
