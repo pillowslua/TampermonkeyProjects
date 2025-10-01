@@ -1,2298 +1,1666 @@
 // ==UserScript==
-// @name         old v
-// @namespace    https://twisk.fun/DuoNexus
-// @version      1.0
-// @description  [ PRO ] Advanced multi-threaded DuoFarmer
-// @description:vi [ PRO ] DuoFarmer đa luồng sieu vip:3
-// @author       tw1sk
+// @name         Hacklingo PRO
+// @name:vi      Hacklingo PRO- Công cụ farm XP
+// @name:en      Hacklingo PRO- XP Farming Tool
+// @name:es      Hacklingo PRO- Herramienta de farmeo de XP
+// @name:fr      Hacklingo PRO- Outil de farm XP
+// @name:de      Hacklingo PRO- XP Farming Tool
+// @name:pt-BR   Hacklingo PRO- Ferramenta de farm XP
+// @name:ru      Hacklingo PRO- Инструмент для фарма XP
+// @name:zh-CN   Hacklingo PRO- XP刷分工具
+// @name:ja      Hacklingo PRO- XPファーミングツール
+// @name:ko      Hacklingo PRO- XP 파밍 도구
+// @description  Hacklingo — tool for farming XP, streaks, and gems with ultra-fast multi-thread support and API selection.
+// @description:vi  Hacklingo — công cụ farm XP, streaks và gems với tốc độ cao nhờ multi-thread và lựa chọn API.
+// @description:en  Hacklingo — tool for farming XP, streaks, and gems with ultra-fast multi-thread support and API selection.
+// @description:es  Hacklingo — herramienta para farmear XP, rachas y gemas con soporte multi-hilo de alta velocidad y selección de API.
+// @description:fr  Hacklingo — outil pour farmer XP, séries et gemmes avec un support multi-thread ultra-rapide et sélection d'API.
+// @description:de  Hacklingo — Tool zum Farmen von XP, Serien und Edelsteinen mit ultraschneller Multi-Thread-Unterstützung und API-Auswahl.
+// @description:pt-BR Hacklingo — ferramenta para farmar XP, streaks e gemas com suporte multi-thread de alta velocidade e seleção de API.
+// @description:ru  Hacklingo — инструмент для фарма XP, серий и самоцветов с ультра-быстрой многопоточностью и выбором API.
+// @description:zh-CN Hacklingo — 支持高速多线程和API选择的XP、连胜和宝石刷分工具。
+// @description:ja  Hacklingo — XP・連続日数・ジェムを超高速マルチスレッドで稼ぐツール、API選択対応。
+// @description:ko  Hacklingo — 초고속 멀티스레드와 API 선택으로 XP, 연속 기록, 보석을 파밍하는 도구.
+// @namespace    https://twisk.fun
+// @version      1.1.3
+// @author       airpl4ne
+// @author       Airplane Mode
+// @author       S
 // @match        https://*.duolingo.com/*
-// @icon         https://i.ibb.co/s9gBrFsV/DuoNexus.png
+// @icon         https://github.com/pillowslua/images/blob/main/Hacklingo.png?raw=true
 // @grant        none
 // @license      MIT
+// @downloadURL https://update.greasyfork.org/scripts/547813/Hacklingo.user.js
+// @updateURL https://update.greasyfork.org/scripts/547813/Hacklingo.meta.js
 // ==/UserScript==
 
-const VERSION = "1.0";
-const DELAY = 300; // Reduced for multi-threading
-const MAX_THREADS = 5;
-const KEY_API_URL = "https://raw.githubusercontent.com/pillowslua/keylist/refs/heads/main/valid_keys.txt";
+(function () {
+  'use strict';
 
-var jwt, defaultHeaders, userInfo, sub;
-let isRunning = false;
-let currentTheme = localStorage.getItem('duofarmer_theme') || 'dark';
-let isKeyValid = localStorage.getItem('duofarmer_key_valid') === 'true';
-let userKey = localStorage.getItem('duofarmer_key') || '';
-let activeThreads = [];
-let totalEarned = { xp: 0, gems: 0, streak: 0 };
-let farmingStats = { sessions: 0, errors: 0, startTime: null };
+  const templateRaw = `
+    <!-- SVG Icons -->
+    <svg style="display: none;">
+      <defs>
+        <symbol id="icon-settings" viewBox="0 0 24 24">
+          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+        </symbol>
+        <symbol id="icon-gem" viewBox="0 0 24 24">
+          <path d="M12,2L2,7l10,5l10-5L12,2z M12,14.5l-8-4v6.5l8,4l8-4V10.5L12,14.5z"/>
+        </symbol>
+        <symbol id="icon-fire" viewBox="0 0 24 24">
+          <path d="M13.5,0.67s0.74,2.65,0.74,4.8c0,2.06-1.35,3.73-3.41,3.73c-2.07,0-3.63-1.67-3.63-3.73l0.03-0.36C5.21,7.51,4,10.62,4,14 c0,4.42,3.58,8,8,8s8-3.58,8-8C20,8.61,17.41,3.8,13.5,0.67z M11.71,19c-1.78,0-3.22-1.4-3.22-3.14c0-1.62,1.05-2.76,2.81-3.12 c1.77-0.36,3.6-1.21,4.62-2.58c0.39,1.29,0.59,2.65,0.59,4.04c0,2.65-2.15,4.8-4.8,4.8V19z"/>
+        </symbol>
+        <symbol id="icon-star" viewBox="0 0 24 24">
+          <path d="M12,17.27L18.18,21l-1.64-7.03L22,9.24l-7.19-0.61L12,2L9.19,8.63L2,9.24l5.46,4.73L5.82,21L12,17.27z"/>
+        </symbol>
+        <symbol id="icon-close" viewBox="0 0 24 24">
+          <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41z"/>
+        </symbol>
+        <symbol id="icon-play" viewBox="0 0 24 24">
+          <path d="M8,5v14l11-7L8,5z"/>
+        </symbol>
+        <symbol id="icon-stop" viewBox="0 0 24 24">
+          <path d="M6,6h12v12H6V6z"/>
+        </symbol>
+      </defs>
+    </svg>
 
-const initInterface = () => {
-  const containerHTML = `
-  <div id="_backdrop"></div>
-  <div id="_container" class="theme-${currentTheme}">
-    <!-- Header with TwiskGPT inspired design -->
-    <div id="_header">
-      <div class="_header_content">
-        <div class="_logo_section">
-          <div class="_logo">🚀</div>
-          <div class="_title_section">
-            <h1>DuoNexus</h1>
-            <span class="_subtitle">Multi-threaded XP farming</span>
+    <div id="overlay"></div>
+    <div id="container">
+      <div id="header">
+        <div class="header-content">
+          <svg class="logo-icon" width="32" height="32" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M13,17h-2v-6h2V17z M13,9h-2V7h2V9z"/>
+          </svg>
+          <span class="label">Hacklingo</span>
+        </div>
+        <button id="settings-btn" class="icon-btn">
+          <svg class="icon" width="20" height="20"><use href="#icon-settings"/></svg>
+        </button>
+      </div>
+
+      <div id="body">
+        <div class="user-card">
+          <div class="user-avatar">
+            <span class="avatar-text" id="avatar-initial">D</span>
+          </div>
+          <div class="user-info-grid">
+            <div class="info-item">
+              <span class="info-label">Username</span>
+              <span class="info-value" id="username">Loading...</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">From → Learning</span>
+              <span class="info-value"><span id="from">-</span> → <span id="learn">-</span></span>
+            </div>
           </div>
         </div>
-        <div class="_header_actions">
-          <button id="_minimize_btn" class="_header_btn" title="Minimize">−</button>
-          <button id="_settings_btn" class="_header_btn" title="Settings">⚙</button>
-          <button id="_close_btn" class="_header_btn _close" title="Close">×</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- License verification section -->
-    <div id="_license_section" class="_section ${isKeyValid ? '_collapsed' : ''}">
-      <div class="_section_header" onclick="toggleSection('_license_section')">
-        <div class="_section_title">
-          <span class="_section_icon">🔐</span>
-          <span>License Verification</span>
+        <div class="stats-grid">
+          <div class="stat-card streak">
+            <svg class="stat-icon" width="24" height="24"><use href="#icon-fire"/></svg>
+            <div class="stat-content">
+              <span class="stat-label">Streak</span>
+              <span class="stat-value" id="streak">0</span>
+            </div>
+          </div>
+          <div class="stat-card gem">
+            <svg class="stat-icon" width="24" height="24"><use href="#icon-gem"/></svg>
+            <div class="stat-content">
+              <span class="stat-label">Gems</span>
+              <span class="stat-value" id="gem">0</span>
+            </div>
+          </div>
+          <div class="stat-card xp">
+            <svg class="stat-icon" width="24" height="24"><use href="#icon-star"/></svg>
+            <div class="stat-content">
+              <span class="stat-label">Total XP</span>
+              <span class="stat-value" id="xp">0</span>
+            </div>
+          </div>
         </div>
-        <div class="_section_status">
-          <span id="_license_status" class="${isKeyValid ? '_status_success' : '_status_error'}">
-            ${isKeyValid ? '✓ Verified' : '⚠ Required'}
-          </span>
-          <span class="_chevron ${isKeyValid ? '_rotated' : ''}">▼</span>
-        </div>
-      </div>
-      <div class="_section_content" ${isKeyValid ? 'style="display:none"' : ''}>
-        <div class="_input_container">
-          <input type="text" id="_license_input" placeholder="Enter your license key..." value="${userKey}"
-                 class="_modern_input" spellcheck="false">
-          <button id="_verify_btn" class="_primary_btn">
-            <span class="_btn_content">
-              <span class="_btn_icon">🔑</span>
-              <span class="_btn_text">Verify License</span>
-            </span>
+
+        <div id="action-row">
+          <select id="select-option" class="modern-select"></select>
+          <button id="start-btn" class="action-btn start-btn">
+            <svg class="btn-icon" width="18" height="18"><use href="#icon-play"/></svg>
+            Start
+          </button>
+          <button id="stop-btn" class="action-btn stop-btn" hidden>
+            <svg class="btn-icon" width="18" height="18"><use href="#icon-stop"/></svg>
+            Stop
           </button>
         </div>
-        <div class="_help_text">
-          Need a license key? Contact <strong>@tw1sk</strong> on Discord
+
+        <div id="notify" class="notify-box">
+          <div class="notify-icon">ℹ️</div>
+          <div class="notify-text">Initializing Hacklingo...</div>
+        </div>
+      </div>
+
+      <div id="footer">
+        <span class="footer-text">Stay safe, farm responsibly 💙</span>
+      </div>
+    </div>
+
+    <div id="settings-container">
+      <div id="settings-menu" class="modal-content">
+        <div class="modal-header">
+          <span class="label">Settings</span>
+          <button id="settings-close" class="icon-btn">
+            <svg class="icon" width="20" height="20"><use href="#icon-close"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-group">
+            <h3>General</h3>
+            <div class="setting-item">
+              <span>Auto open UI on load</span>
+              <input type="checkbox" id="auto-open-ui" class="toggle-switch">
+            </div>
+            <div class="setting-item">
+              <span>Auto start farming on load</span>
+              <input type="checkbox" id="auto-start" class="toggle-switch">
+            </div>
+            <div class="setting-item">
+              <span>Default farming option</span>
+              <select id="default-option" class="modern-select"></select>
+            </div>
+            <div class="setting-item">
+              <span>Hide username</span>
+              <input type="checkbox" id="hide-username" class="toggle-switch">
+            </div>
+            <div class="setting-item">
+              <span>Keep screen on</span>
+              <input type="checkbox" id="keep-screen-on" class="toggle-switch">
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>Performance</h3>
+            <div class="setting-item">
+              <span>Delay time (100ms - 10000ms):<br><i class="muted">Lower = faster = higher ban risk</i></span>
+              <input type="number" id="delay-time" min="100" max="10000" value="500" class="number-input">
+            </div>
+            <div class="setting-item">
+              <span>Retry time (100ms - 10000ms):</span>
+              <input type="number" id="retry-time" min="100" max="10000" value="1000" class="number-input">
+            </div>
+            <div class="setting-item">
+              <span>Auto stop after (min) (0 = unlimited)</span>
+              <input type="number" id="auto-stop-time" min="0" max="60" value="0" class="number-input">
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>Advanced</h3>
+            <div class="setting-item">
+              <span>Get JWT token</span>
+              <button id="get-jwt-token" class="setting-btn">Get Token</button>
+            </div>
+            <div class="setting-item">
+              <span>Set account to public</span>
+              <button id="set-account-public" class="setting-btn">Set Public</button>
+            </div>
+            <div class="setting-item">
+              <span>Set account to private</span>
+              <button id="set-account-private" class="setting-btn">Set Private</button>
+            </div>
+            <div class="setting-item">
+              <span>Quick logout</span>
+              <button id="quick-logout" class="setting-btn danger">Logout</button>
+            </div>
+            <div class="setting-item">
+              <span>Reset settings</span>
+              <button id="reset-setting" class="setting-btn danger">Reset</button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>Links & Info</h3>
+            <div class="setting-item">
+              <span>Blank page (best performance)</span>
+              <a href="https://www.duolingo.com/errors/0">Open</a>
+            </div>
+            <div class="setting-item">
+              <span>Discord Server</span>
+              <a href="https://discord.gg/Gvmd7deFtS">Open</a>
+            </div>
+            <div class="setting-item">
+              <span>User info:</span>
+            </div>
+            <code id="user-info-display">Loading...</code>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="save-settings" class="save-btn">Save Settings</button>
         </div>
       </div>
     </div>
 
-    <!-- Main content (hidden until license verified) -->
-    <div id="_main_content" ${!isKeyValid ? 'style="display:none"' : ''}>
-
-      <!-- User info section -->
-      <div id="_user_section" class="_section">
-        <div class="_section_header">
-          <div class="_section_title">
-            <span class="_section_icon">👤</span>
-            <span>Account Overview</span>
-          </div>
-          <button id="_refresh_btn" class="_icon_btn" title="Refresh data">🔄</button>
-        </div>
-        <div class="_section_content">
-          <div class="_stats_grid">
-            <div class="_stat_card">
-              <div class="_stat_icon">👋</div>
-              <div class="_stat_content">
-                <div class="_stat_label">Username</div>
-                <div class="_stat_value" id="_username">Loading...</div>
-              </div>
-            </div>
-            <div class="_stat_card">
-              <div class="_stat_icon">🌍</div>
-              <div class="_stat_content">
-                <div class="_stat_label">Languages</div>
-                <div class="_stat_value">
-                  <span id="_from_lang">--</span> → <span id="_learning_lang">--</span>
-                </div>
-              </div>
-            </div>
-            <div class="_stat_card">
-              <div class="_stat_icon">🔥</div>
-              <div class="_stat_content">
-                <div class="_stat_label">Streak</div>
-                <div class="_stat_value" id="_current_streak">0</div>
-              </div>
-            </div>
-            <div class="_stat_card">
-              <div class="_stat_icon">💎</div>
-              <div class="_stat_content">
-                <div class="_stat_label">Gems</div>
-                <div class="_stat_value" id="_current_gems">0</div>
-              </div>
-            </div>
-            <div class="_stat_card">
-              <div class="_stat_icon">⚡</div>
-              <div class="_stat_content">
-                <div class="_stat_label">Total XP</div>
-                <div class="_stat_value" id="_current_xp">0</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Farming control section -->
-      <div id="_farming_section" class="_section">
-        <div class="_section_header">
-          <div class="_section_title">
-            <span class="_section_icon">🌾</span>
-            <span>Farming Controls</span>
-          </div>
-          <div class="_thread_indicator">
-            <span class="_thread_count">Threads: <strong id="_active_threads">0</strong>/${MAX_THREADS}</span>
-          </div>
-        </div>
-        <div class="_section_content">
-          <div class="_farming_controls">
-            <div class="_control_row">
-              <select id="_farming_mode" class="_modern_select">
-                <option value="xp_multi">⚡ Multi-threaded XP Farming</option>
-                <option value="gem_multi">💎 Multi-threaded Gem Farming</option>
-                <option value="streak_repair">🔧 Streak Repair (Single)</option>
-                <option value="streak_farm">🔥 Streak Farming (Single)</option>
-                <option value="mixed_farming">🎯 Mixed Farming (All types)</option>
-              </select>
-              <div class="_thread_control">
-                <label>Threads:</label>
-                <input type="range" id="_thread_slider" min="1" max="${MAX_THREADS}" value="3" class="_slider">
-                <span id="_thread_display">3</span>
-              </div>
-            </div>
-            <div class="_control_row">
-              <button id="_start_farming" class="_primary_btn _large">
-                <span class="_btn_content">
-                  <span class="_btn_icon">▶</span>
-                  <span class="_btn_text">Start Farming</span>
-                </span>
-              </button>
-              <button id="_stop_farming" class="_danger_btn _large" style="display:none">
-                <span class="_btn_content">
-                  <span class="_btn_icon">⏹</span>
-                  <span class="_btn_text">Stop Farming</span>
-                </span>
-              </button>
-              <button id="_pause_farming" class="_secondary_btn" style="display:none">
-                <span class="_btn_content">
-                  <span class="_btn_icon">⏸</span>
-                  <span class="_btn_text">Pause</span>
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Statistics section -->
-      <div id="_stats_section" class="_section">
-        <div class="_section_header">
-          <div class="_section_title">
-            <span class="_section_icon">📊</span>
-            <span>Live Statistics</span>
-          </div>
-          <button id="_reset_stats" class="_icon_btn" title="Reset statistics">🔄</button>
-        </div>
-        <div class="_section_content">
-          <div class="_stats_grid _live_stats">
-            <div class="_stat_card _earned">
-              <div class="_stat_icon">⚡</div>
-              <div class="_stat_content">
-                <div class="_stat_label">XP Earned</div>
-                <div class="_stat_value" id="_earned_xp">0</div>
-              </div>
-            </div>
-            <div class="_stat_card _earned">
-              <div class="_stat_icon">💎</div>
-              <div class="_stat_content">
-                <div class="_stat_label">Gems Earned</div>
-                <div class="_stat_value" id="_earned_gems">0</div>
-              </div>
-            </div>
-            <div class="_stat_card _earned">
-              <div class="_stat_icon">🔥</div>
-              <div class="_stat_content">
-                <div class="_stat_label">Streak Gained</div>
-                <div class="_stat_value" id="_earned_streak">0</div>
-              </div>
-            </div>
-            <div class="_stat_card">
-              <div class="_stat_icon">🎯</div>
-              <div class="_stat_content">
-                <div class="_stat_label">Success Rate</div>
-                <div class="_stat_value" id="_success_rate">100%</div>
-              </div>
-            </div>
-          </div>
-          <div class="_progress_section">
-            <div class="_progress_header">
-              <span>Farming Progress</span>
-              <span id="_farming_time">00:00:00</span>
-            </div>
-            <div class="_thread_progress">
-              <div id="_thread_bars"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Console output -->
-      <div id="_console_section" class="_section">
-        <div class="_section_header">
-          <div class="_section_title">
-            <span class="_section_icon">💻</span>
-            <span>Console Output</span>
-          </div>
-          <div class="_console_controls">
-            <button id="_clear_console" class="_icon_btn" title="Clear console">🗑</button>
-            <button id="_auto_scroll" class="_icon_btn _active" title="Auto scroll">📜</button>
-          </div>
-        </div>
-        <div class="_section_content">
-          <div id="_console_output" class="_console">
-            <div class="_console_line _info">
-              <span class="_timestamp">[${new Date().toLocaleTimeString()}]</span>
-              <span class="_message">DuoNexus v${VERSION} initialized</span>
-            </div>
-            <div class="_console_line _info">
-              <span class="_timestamp">[${new Date().toLocaleTimeString()}]</span>
-              <span class="_message">Multi-threading engine ready</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div id="floating-btn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M13,17h-2v-6h2V17z M13,9h-2V7h2V9z"/>
+      </svg>
     </div>
+  `;
 
-    <!-- Settings Modal -->
-    <div id="_settings_modal" class="_modal" style="display:none">
-      <div class="_modal_overlay"></div>
-      <div class="_modal_container">
-        <div class="_modal_header">
-          <h2>Settings & Preferences</h2>
-          <button id="_close_modal" class="_icon_btn">×</button>
-        </div>
-        <div class="_modal_content">
-          <div class="_setting_group">
-            <h3>🎨 Appearance</h3>
-            <div class="_theme_selector">
-              <button class="_theme_option ${currentTheme === 'dark' ? '_active' : ''}" data-theme="dark">
-                <span class="_theme_preview _dark"></span>
-                <span>Dark Mode</span>
-              </button>
-              <button class="_theme_option ${currentTheme === 'light' ? '_active' : ''}" data-theme="light">
-                <span class="_theme_preview _light"></span>
-                <span>Light Mode</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="_setting_group">
-            <h3>⚡ Performance</h3>
-            <div class="_setting_item">
-              <label>Request Delay (ms)</label>
-              <input type="range" id="_delay_slider" min="100" max="1000" value="${DELAY}" class="_slider">
-              <span id="_delay_value">${DELAY}ms</span>
-            </div>
-            <div class="_setting_item">
-              <label>Auto-pause on errors</label>
-              <input type="checkbox" id="_auto_pause" class="_checkbox" checked>
-            </div>
-          </div>
-
-          <div class="_setting_group">
-            <h3>🔗 Quick Actions</h3>
-            <div class="_action_buttons">
-              <a href="https://www.duolingo.com/errors/404.html" target="_blank" class="_action_btn">
-                📄 Blank Page
-              </a>
-              <button id="_export_stats" class="_action_btn">
-                📊 Export Stats
-              </button>
-              <button id="_backup_settings" class="_action_btn">
-                💾 Backup Settings
-              </button>
-            </div>
-          </div>
-
-          <div class="_setting_group">
-            <h3>ℹ️ About</h3>
-            <div class="_about_section">
-              <p><strong>DuoNexus v${VERSION}</strong></p>
-              <p>Advanced multi-threaded farming tool</p>
-              <p>Developer: <strong>tw1sk</strong></p>
-              <p>UI inspired by TwiskGPT</p>
-              <div class="_social_links">
-                <a href="https://discord.gg/m3EV55SpYw" target="_blank" class="_social_btn">💬 Discord</a>
-                <a href="https://twisk.fun/DuoNexus" target="_blank" class="_social_btn">📦 Website</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div id="_footer">
-      <div class="_footer_content">
-        <span>© 2025 DuoNexus by <strong>tw1sk</strong></span>
-        <span class="_version">v${VERSION}</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Claude.ai inspired floating button -->
-  <div id="_floating_container">
-    <div id="_floating_btn" class="theme-${currentTheme}" title="Open DuoNexus">
-      <div class="_btn_ripple"></div>
-      <div class="_btn_icon">🚀</div>
-    </div>
-  </div>
-`;
-
-  const style = document.createElement("style");
-  style.innerHTML = `
-    /* CSS Variables for theming */
-    :root {
-      --animation-duration: 0.2s;
-      --animation-ease: cubic-bezier(0.4, 0, 0.2, 1);
-      --border-radius-sm: 6px;
-      --border-radius-md: 12px;
-      --border-radius-lg: 20px;
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
-      --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.2);
-      --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      --gradient-danger: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    }
-
-    /* Dark Theme */
-    .theme-dark {
-      --bg-primary: #0d1117;
-      --bg-secondary: #161b22;
-      --bg-tertiary: #21262d;
-      --bg-quaternary: #30363d;
-      --text-primary: #f0f6fc;
-      --text-secondary: #8b949e;
-      --text-tertiary: #6e7681;
-      --border-primary: #30363d;
-      --border-secondary: #21262d;
-      --accent-primary: #58a6ff;
-      --accent-secondary: #1f6feb;
-      --success-color: #3fb950;
-      --error-color: #f85149;
-      --warning-color: #d29922;
-    }
-
-    /* Light Theme */
-    .theme-light {
-      --bg-primary: #ffffff;
-      --bg-secondary: #f6f8fa;
-      --bg-tertiary: #eaeef2;
-      --bg-quaternary: #d0d7de;
-      --text-primary: #24292f;
-      --text-secondary: #656d76;
-      --text-tertiary: #8c959f;
-      --border-primary: #d0d7de;
-      --border-secondary: #eaeef2;
-      --accent-primary: #0969da;
-      --accent-secondary: #0550ae;
-      --success-color: #1a7f37;
-      --error-color: #cf222e;
-      --warning-color: #9a6700;
-    }
-
-    /* Reset and base styles */
+  const cssText = `
     * {
       box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    /* Container */
-    #_container {
+    #container {
+      width: 90vw;
+      max-width: 900px;
+      min-height: 500px;
+      max-height: 90vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      display: flex;
+      flex-direction: column;
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 95vw;
-      max-width: 1200px;
-      max-height: 90vh;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--border-radius-lg);
-      box-shadow: var(--shadow-lg);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-      color: var(--text-primary);
       z-index: 9999;
-      display: flex;
-      flex-direction: column;
       overflow: hidden;
-      animation: containerSlideIn var(--animation-duration) var(--animation-ease);
     }
 
-    @keyframes containerSlideIn {
-      from {
-        opacity: 0;
-        transform: translate(-50%, -60%);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-      }
-    }
-
-    /* Backdrop */
-    #_backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(8px);
-      z-index: 9998;
-      animation: backdropFadeIn var(--animation-duration) var(--animation-ease);
-    }
-
-    @keyframes backdropFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    /* Header */
-    #_header {
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--border-primary);
-      padding: 16px 20px;
-    }
-
-    ._header_content {
+    #header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 20px 30px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(102, 126, 234, 0.1);
     }
 
-    ._logo_section {
+    .header-content {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    ._logo {
-      width: 40px;
-      height: 40px;
-      background: var(--gradient-primary);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      animation: logoSpin 2s ease-in-out infinite;
+    .logo-icon {
+      color: #667eea;
     }
 
-    @keyframes logoSpin {
-      0%, 100% { transform: rotate(0deg); }
-      50% { transform: rotate(180deg); }
-    }
-
-    ._title_section h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 600;
-      background: var(--gradient-primary);
+    #header .label {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
 
-    ._subtitle {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin: 0;
-    }
-
-    ._header_actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    ._header_btn {
-      width: 32px;
-      height: 32px;
+    .icon-btn {
+      background: rgba(102, 126, 234, 0.1);
       border: none;
-      background: transparent;
-      color: var(--text-secondary);
-      border-radius: var(--border-radius-sm);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      transition: all var(--animation-duration) var(--animation-ease);
-    }
-
-    ._header_btn:hover {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-      transform: scale(1.1);
-    }
-
-    ._header_btn._close:hover {
-      background: var(--error-color);
-      color: white;
-    }
-
-    /* Sections */
-    ._section {
-      border-bottom: 1px solid var(--border-secondary);
-    }
-
-    ._section_header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 20px;
-      cursor: pointer;
-      background: var(--bg-secondary);
-      transition: background var(--animation-duration) var(--animation-ease);
-    }
-
-    ._section_header:hover {
-      background: var(--bg-tertiary);
-    }
-
-    ._section_title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 600;
-      font-size: 16px;
-    }
-
-    ._section_icon {
-      font-size: 20px;
-    }
-
-    ._section_status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    ._status_success {
-      color: var(--success-color);
-      font-weight: 600;
-    }
-
-    ._status_error {
-      color: var(--error-color);
-      font-weight: 600;
-    }
-
-    ._chevron {
-      transition: transform var(--animation-duration) var(--animation-ease);
-      color: var(--text-tertiary);
-    }
-
-    ._chevron._rotated {
-      transform: rotate(180deg);
-    }
-
-    ._section._collapsed ._section_content {
-      display: none;
-    }
-
-    ._section_content {
-      padding: 20px;
-      background: var(--bg-primary);
-    }
-
-    /* Input elements */
-    ._input_container {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    ._modern_input, ._modern_select {
-      flex: 1;
-      padding: 12px 16px;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--border-radius-md);
-      color: var(--text-primary);
-      font-size: 14px;
-      transition: all var(--animation-duration) var(--animation-ease);
-      font-family: inherit;
-    }
-
-    ._modern_input:focus, ._modern_select:focus {
-      outline: none;
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
-    }
-
-    ._modern_select {
-      cursor: pointer;
-    }
-
-    /* Buttons */
-    ._primary_btn, ._secondary_btn, ._danger_btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 16px;
-      border: none;
-      border-radius: var(--border-radius-md);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all var(--animation-duration) var(--animation-ease);
-      text-decoration: none;
-      white-space: nowrap;
-    }
-
-    ._primary_btn {
-      background: var(--accent-primary);
-      color: white;
-    }
-
-    ._primary_btn:hover {
-      background: var(--accent-secondary);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-
-    ._secondary_btn {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-      border: 1px solid var(--border-primary);
-    }
-
-    ._secondary_btn:hover {
-      background: var(--bg-quaternary);
-      transform: translateY(-1px);
-    }
-
-    ._danger_btn {
-      background: var(--error-color);
-      color: white;
-    }
-
-    ._danger_btn:hover {
-      background: #d73a49;
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-
-    ._large {
-      padding: 14px 28px;
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    ._btn_content {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    ._btn_icon {
-      font-size: 16px;
-    }
-
-    ._icon_btn {
-      width: 36px;
-      height: 36px;
-      border: none;
-      background: transparent;
-      color: var(--text-secondary);
-      border-radius: var(--border-radius-sm);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      transition: all var(--animation-duration) var(--animation-ease);
-    }
-
-    ._icon_btn:hover {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-      transform: scale(1.1);
-    }
-
-    ._icon_btn._active {
-      background: var(--accent-primary);
-      color: white;
-    }
-
-    /* Stats grid */
-    ._stats_grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-    }
-
-    ._stat_card {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--border-radius-md);
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: all var(--animation-duration) var(--animation-ease);
-    }
-
-    ._stat_card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-sm);
-      border-color: var(--accent-primary);
-    }
-
-    ._stat_card._earned {
-      background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-      border-color: var(--success-color);
-    }
-
-    ._stat_icon {
       width: 40px;
       height: 40px;
-      background: var(--gradient-primary);
       border-radius: 10px;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
+      transition: all 0.3s ease;
     }
 
-    ._stat_content {
+    .icon-btn:hover {
+      background: rgba(102, 126, 234, 0.2);
+      transform: scale(1.05);
+    }
+
+    .icon {
+      fill: #667eea;
+    }
+
+    #body {
       flex: 1;
-    }
-
-    ._stat_label {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-bottom: 4px;
-      font-weight: 500;
-    }
-
-    ._stat_value {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    /* Farming controls */
-    ._farming_controls {
+      background: #ffffff;
+      padding: 30px;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 24px;
     }
 
-    ._control_row {
+    .user-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 16px;
+      padding: 24px;
       display: flex;
+      gap: 20px;
       align-items: center;
-      gap: 16px;
+      box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
     }
 
-    ._thread_control {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-    }
-
-    ._thread_indicator {
-      background: var(--bg-tertiary);
-      padding: 6px 12px;
-      border-radius: var(--border-radius-sm);
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    ._slider {
-      width: 80px;
-      height: 4px;
-      border-radius: 2px;
-      background: var(--bg-tertiary);
-      outline: none;
-      cursor: pointer;
-    }
-
-    ._slider::-webkit-slider-thumb {
-      appearance: none;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: var(--accent-primary);
-      cursor: pointer;
-      box-shadow: var(--shadow-sm);
-    }
-
-    /* Progress bars */
-    ._progress_section {
-      margin-top: 16px;
-    }
-
-    ._progress_header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    ._thread_progress {
-      background: var(--bg-secondary);
-      border-radius: var(--border-radius-sm);
-      padding: 12px;
-    }
-
-    ._thread_bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-      font-size: 12px;
-    }
-
-    ._thread_bar:last-child {
-      margin-bottom: 0;
-    }
-
-    ._thread_id {
+    .user-avatar {
       width: 60px;
-      color: var(--text-secondary);
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid rgba(255, 255, 255, 0.3);
     }
 
-    ._thread_progress_bar {
+    .avatar-text {
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+    }
+
+    .user-info-grid {
       flex: 1;
-      height: 6px;
-      background: var(--bg-tertiary);
-      border-radius: 3px;
-      overflow: hidden;
+      display: grid;
+      gap: 12px;
     }
 
-    ._thread_progress_fill {
-      height: 100%;
-      background: var(--gradient-success);
-      transition: width 0.5s ease;
-      border-radius: 3px;
-    }
-
-    ._thread_status {
-      width: 80px;
-      text-align: right;
-      color: var(--text-tertiary);
-      font-size: 11px;
-    }
-
-    /* Console */
-    ._console {
-      height: 200px;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--border-radius-md);
-      padding: 12px;
-      overflow-y: auto;
-      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-      font-size: 13px;
-      line-height: 1.4;
-    }
-
-    ._console_line {
+    .info-item {
       display: flex;
-      gap: 8px;
-      margin-bottom: 2px;
-      align-items: flex-start;
-    }
-
-    ._timestamp {
-      color: var(--text-tertiary);
-      font-weight: 500;
-      flex-shrink: 0;
-    }
-
-    ._message {
-      color: var(--text-primary);
-    }
-
-    ._console_line._success ._message {
-      color: var(--success-color);
-    }
-
-    ._console_line._error ._message {
-      color: var(--error-color);
-    }
-
-    ._console_line._warning ._message {
-      color: var(--warning-color);
-    }
-
-    ._console_line._info ._message {
-      color: var(--accent-primary);
-    }
-
-    ._console_controls {
-      display: flex;
+      flex-direction: column;
       gap: 4px;
     }
 
-    /* Settings Modal */
-    ._modal {
+    .info-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 16px;
+      color: white;
+      font-weight: 600;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border: 2px solid #f0f0f0;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card.streak { border-color: #ff9500; }
+    .stat-card.gem { border-color: #667eea; }
+    .stat-card.xp { border-color: #ffd700; }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      padding: 8px;
+      border-radius: 10px;
+    }
+
+    .stat-card.streak .stat-icon { background: #fff3e0; fill: #ff9500; }
+    .stat-card.gem .stat-icon { background: #f0f4ff; fill: #667eea; }
+    .stat-card.xp .stat-icon { background: #fffef0; fill: #ffd700; }
+
+    .stat-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    #action-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .modern-select {
+      flex: 1;
+      padding: 14px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      background: white;
+      color: #333;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .modern-select:hover {
+      border-color: #667eea;
+    }
+
+    .modern-select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .action-btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .start-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .start-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .stop-btn {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    }
+
+    .stop-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .btn-icon {
+      fill: currentColor;
+    }
+
+    .notify-box {
+      background: linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%);
+      border: 2px solid #667eea;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      min-height: 80px;
+    }
+
+    .notify-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .notify-text {
+      flex: 1;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    #footer {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 16px;
+      text-align: center;
+      border-top: 1px solid rgba(102, 126, 234, 0.1);
+    }
+
+    .footer-text {
+      color: #667eea;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    #overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 9998;
+    }
+
+    #floating-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+      z-index: 10000;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      color: white;
+    }
+
+    #floating-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+    }
+
+    #settings-container {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
       z-index: 10000;
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
-    }
-
-    ._modal_overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
       background: rgba(0, 0, 0, 0.6);
       backdrop-filter: blur(8px);
     }
 
-    ._modal_container {
-      position: relative;
-      width: 90%;
-      max-width: 600px;
+    .modal-content {
+      width: 90vw;
+      max-width: 700px;
       max-height: 80vh;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--border-radius-lg);
-      box-shadow: var(--shadow-lg);
-      overflow: hidden;
-      animation: modalSlideIn var(--animation-duration) var(--animation-ease);
-    }
-
-    @keyframes modalSlideIn {
-      from {
-        opacity: 0;
-        transform: scale(0.9) translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-      }
-    }
-
-    ._modal_header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px;
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--border-primary);
-    }
-
-    ._modal_header h2 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    ._modal_content {
-      padding: 20px;
-      overflow-y: auto;
-      max-height: calc(80vh - 80px);
-    }
-
-    ._setting_group {
-      margin-bottom: 24px;
-    }
-
-    ._setting_group:last-child {
-      margin-bottom: 0;
-    }
-
-    ._setting_group h3 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    ._theme_selector {
-      display: flex;
-      gap: 12px;
-    }
-
-    ._theme_option {
-      flex: 1;
-      padding: 16px;
-      background: var(--bg-secondary);
-      border: 2px solid var(--border-primary);
-      border-radius: var(--border-radius-md);
-      cursor: pointer;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 24px 30px;
+      display: flex;
       align-items: center;
-      gap: 8px;
-      transition: all var(--animation-duration) var(--animation-ease);
-      color: var(--text-primary);
+      justify-content: space-between;
     }
 
-    ._theme_option:hover {
-      border-color: var(--accent-primary);
-      transform: translateY(-2px);
-    }
-
-    ._theme_option._active {
-      border-color: var(--accent-primary);
-      background: var(--accent-primary);
+    .modal-header .label {
+      font-size: 20px;
+      font-weight: 700;
       color: white;
     }
 
-    ._theme_preview {
-      width: 32px;
-      height: 20px;
-      border-radius: 4px;
-      position: relative;
+    .modal-header .icon-btn {
+      background: rgba(255, 255, 255, 0.2);
     }
 
-    ._theme_preview._dark {
-      background: linear-gradient(to bottom, #0d1117 0%, #161b22 50%, #21262d 100%);
+    .modal-header .icon-btn .icon {
+      fill: white;
     }
 
-    ._theme_preview._light {
-      background: linear-gradient(to bottom, #ffffff 0%, #f6f8fa 50%, #eaeef2 100%);
-    }
-
-    ._setting_item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border-secondary);
-    }
-
-    ._setting_item:last-child {
-      border-bottom: none;
-    }
-
-    ._setting_item label {
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-
-    ._checkbox {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--accent-primary);
-    }
-
-    ._action_buttons {
+    .modal-body {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 24px;
     }
 
-    ._action_btn {
+    .settings-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .settings-group h3 {
+      font-size: 16px;
+      color: #667eea;
+      font-weight: 700;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #f0f0f0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--border-radius-md);
-      color: var(--text-primary);
-      text-decoration: none;
-      font-size: 14px;
-      transition: all var(--animation-duration) var(--animation-ease);
-      cursor: pointer;
-    }
-
-    ._action_btn:hover {
-      background: var(--bg-tertiary);
-      border-color: var(--accent-primary);
-    }
-
-    ._about_section {
+      justify-content: space-between;
       padding: 16px;
-      background: var(--bg-secondary);
-      border-radius: var(--border-radius-md);
+      background: #f8f9ff;
+      border-radius: 12px;
+      gap: 16px;
+    }
+
+    .setting-item span {
+      flex: 1;
+      color: #333;
       font-size: 14px;
       line-height: 1.6;
     }
 
-    ._about_section p {
-      margin: 8px 0;
-    }
-
-    ._social_links {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    ._social_btn {
-      padding: 8px 12px;
-      background: var(--accent-primary);
-      color: white;
-      text-decoration: none;
-      border-radius: var(--border-radius-sm);
-      font-size: 12px;
-      font-weight: 500;
-      transition: all var(--animation-duration) var(--animation-ease);
-    }
-
-    ._social_btn:hover {
-      background: var(--accent-secondary);
-      transform: translateY(-2px);
-    }
-
-    /* Footer */
-    #_footer {
-      background: var(--bg-secondary);
-      border-top: 1px solid var(--border-primary);
-      padding: 16px 20px;
-    }
-
-    ._footer_content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    ._version {
-      background: var(--bg-tertiary);
-      padding: 4px 8px;
-      border-radius: var(--border-radius-sm);
-      font-weight: 600;
-    }
-
-    /* Floating Button - Claude.ai inspired */
-    #_floating_container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 10001;
-    }
-
-    #_floating_btn {
-      position: relative;
-      width: 56px;
-      height: 56px;
-      background: var(--accent-primary);
-      border-radius: 50%;
-      box-shadow: var(--shadow-lg);
+    .toggle-switch {
+      width: 48px;
+      height: 24px;
       cursor: pointer;
+      accent-color: #667eea;
+    }
+
+    .number-input {
+      width: 100px;
+      padding: 8px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .number-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .setting-btn {
+      padding: 8px 16px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      background: white;
+      color: #667eea;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-btn:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .setting-btn.danger {
+      border-color: #ff6b6b;
+      color: #ff6b6b;
+    }
+
+    .setting-btn.danger:hover {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .setting-item a {
+      color: #667eea;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .setting-item a:hover {
+      border-bottom-color: #667eea;
+    }
+
+    .modal-footer {
+      padding: 20px 30px;
+      background: #f8f9ff;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all var(--animation-duration) var(--animation-ease);
-      overflow: hidden;
+      justify-content: flex-end;
+      border-top: 1px solid #e0e0e0;
     }
 
-    #_floating_btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 25px rgba(88, 166, 255, 0.4);
+    .save-btn {
+      padding: 12px 32px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     }
 
-    #_floating_btn:active {
-      transform: scale(0.95);
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
     }
 
-    ._btn_ripple {
-      position: absolute;
-      border-radius: 50%;
-      transform: scale(0);
-      animation: ripple 0.6s linear;
-      background-color: rgba(255, 255, 255, 0.7);
+    .muted {
+      color: #999;
+      font-size: 12px;
+      font-style: italic;
     }
 
-    @keyframes ripple {
-      to {
-        transform: scale(4);
-        opacity: 0;
-      }
+    .blur {
+      filter: blur(8px);
+      user-select: none;
     }
 
-    ._btn_icon {
-      font-size: 24px;
-      z-index: 1;
-      transition: transform var(--animation-duration) var(--animation-ease);
-    }
-
-    #_floating_btn:hover ._btn_icon {
-      transform: rotate(180deg);
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      #_container {
-        width: 98vw;
-        max-height: 95vh;
-      }
-
-      ._stats_grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      ._control_row {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      ._thread_control {
-        justify-content: center;
-      }
-
-      ._modal_container {
-        width: 95%;
-        margin: 20px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      ._stats_grid {
-        grid-template-columns: 1fr;
-      }
-
-      #_floating_btn {
-        width: 48px;
-        height: 48px;
-        bottom: 16px;
-        right: 16px;
-      }
-
-      ._btn_icon {
-        font-size: 20px;
-      }
-    }
-
-    /* Utility Classes */
     .hidden {
       display: none !important;
     }
 
-    .loading {
-      opacity: 0.6;
+    .disabled {
+      opacity: 0.5;
       pointer-events: none;
+      cursor: not-allowed;
     }
 
-    /* Scrollbar Styling */
-    ::-webkit-scrollbar {
+    code {
+      display: block;
+      background: #f5f5f5;
+      border-left: 4px solid #667eea;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #333;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    /* Scrollbar styling */
+    #body::-webkit-scrollbar,
+    .modal-body::-webkit-scrollbar {
       width: 8px;
     }
 
-    ::-webkit-scrollbar-track {
-      background: var(--bg-tertiary);
+    #body::-webkit-scrollbar-track,
+    .modal-body::-webkit-scrollbar-track {
+      background: #f0f0f0;
       border-radius: 4px;
     }
 
-    ::-webkit-scrollbar-thumb {
-      background: var(--border-primary);
+    #body::-webkit-scrollbar-thumb,
+    .modal-body::-webkit-scrollbar-thumb {
+      background: #667eea;
       border-radius: 4px;
-      transition: background var(--animation-duration) var(--animation-ease);
     }
 
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--text-tertiary);
+    #body::-webkit-scrollbar-thumb:hover,
+    .modal-body::-webkit-scrollbar-thumb:hover {
+      background: #764ba2;
     }
 
-    /* Help text */
-    ._help_text {
-      font-size: 12px;
-      color: var(--text-tertiary);
-      line-height: 1.4;
-    }
-
-    ._help_text strong {
-      color: var(--accent-primary);
-      font-weight: 600;
-    }
-
-    /* Loading animation */
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
+    /* Responsive design */
+    @media (max-width: 768px) {
+      #container {
+        width: 95vw;
+        max-height: 95vh;
       }
-      50% {
-        opacity: 0.5;
-      }
-    }
 
-    ._loading {
-      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #action-row {
+        flex-direction: column;
+      }
+
+      .user-card {
+        flex-direction: column;
+        text-align: center;
+      }
     }
   `;
 
-  document.head.appendChild(style);
+  const log = (message) => {
+    if (typeof GM_log !== "undefined") {
+      GM_log(message);
+    } else {
+      console.log("[DuoFarmer]", message);
+    }
+  };
 
-  const container = document.createElement("div");
-  container.innerHTML = containerHTML;
-  document.body.appendChild(container);
-};
+  const logError = (error, context = "") => {
+    const message = error?.message || error?.toString() || "Unknown error";
+    const fullMessage = context ? `[${context}] ${message}` : message;
+    log(fullMessage);
+  };
 
-// Multi-threading worker class
-class FarmingWorker {
-  constructor(id, type, delay = DELAY) {
-    this.id = id;
-    this.type = type;
-    this.delay = delay;
-    this.isActive = false;
-    this.stats = { requests: 0, successes: 0, errors: 0 };
-    this.progressElement = null;
-  }
+  const delay = (ms) => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
 
-  async start() {
-    this.isActive = true;
-    this.createProgressBar();
-    logToConsole(`Thread ${this.id} started (${this.type})`, 'success');
+  const toTimestamp = (dateStr) => {
+    return Math.floor(new Date(dateStr).getTime() / 1000);
+  };
 
-    while (this.isActive && isRunning) {
+  const getCurrentUnixTimestamp = () => {
+    return Math.floor(Date.now() / 1000);
+  };
+
+  const getJwtToken = () => {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.startsWith("jwt_token=")) {
+        return cookie.substring("jwt_token=".length);
+      }
+    }
+    return null;
+  };
+
+  const decodeJwtToken = (token) => {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64).split("").map(function(c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join("")
+    );
+    return JSON.parse(jsonPayload);
+  };
+
+  const formatHeaders = (jwtToken) => {
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwtToken}`,
+      "User-Agent": navigator.userAgent
+    };
+  };
+
+  const extractSkillId = (currentCourse) => {
+    const sections = currentCourse?.pathSectioned || [];
+    for (const section of sections) {
+      const units = section.units || [];
+      for (const unit of units) {
+        const levels = unit.levels || [];
+        for (const level of levels) {
+          const skillId = level.pathLevelMetadata?.skillId || level.pathLevelClientData?.skillId;
+          if (skillId) return skillId;
+        }
+      }
+    }
+    return null;
+  };
+
+  class ApiService {
+    constructor(jwt, defaultHeaders, userInfo, sub) {
+      this.jwt = jwt;
+      this.defaultHeaders = defaultHeaders;
+      this.userInfo = userInfo;
+      this.sub = sub;
+    }
+
+    static async getUserInfo(userSub, headers) {
+      const userInfoUrl = `https://www.duolingo.com/2017-06-30/users/${userSub}?fields=id,username,fromLanguage,learningLanguage,streak,totalXp,level,numFollowers,numFollowing,gems,creationDate,streakData,privacySettings,currentCourse{pathSectioned{units{levels{pathLevelMetadata{skillId}}}}}`;
+      const response = await fetch(userInfoUrl, { method: "GET", headers });
+      return await response.json();
+    }
+
+    async sendRequest({ url, payload, headers, method = "PUT" }) {
       try {
-        await this.doWork();
-        this.stats.requests++;
-        this.stats.successes++;
-        this.updateProgress();
-        await delay(this.delay + Math.random() * 200); // Add some randomization
+        const res = await fetch(url, {
+          method,
+          headers,
+          body: payload ? JSON.stringify(payload) : void 0
+        });
+        return res;
       } catch (error) {
-        this.stats.errors++;
-        logToConsole(`Thread ${this.id} error: ${error.message}`, 'error');
-        await delay(this.delay * 2); // Back off on error
+        return error;
       }
     }
 
-    logToConsole(`Thread ${this.id} stopped`, 'info');
-  }
+    async setPrivacyStatus(privacyStatus) {
+      const patchUrl = `https://www.duolingo.com/2017-06-30/users/${this.sub}/privacy-settings?fields=privacySettings`;
+      const patchBody = {
+        "DISABLE_SOCIAL": privacyStatus
+      };
+      return await this.sendRequest({ url: patchUrl, payload: patchBody, headers: this.defaultHeaders, method: "PATCH" });
+    }
 
-  async doWork() {
-    switch (this.type) {
-      case 'xp':
-        return await this.farmXP();
-      case 'gem':
-        return await this.farmGem();
-      default:
-        throw new Error(`Unknown work type: ${this.type}`);
+    async farmGemOnce() {
+      const idReward = "SKILL_COMPLETION_BALANCED-dd2495f4_d44e_3fc3_8ac8_94e2191506f0-2-GEMS";
+      const patchUrl = `https://www.duolingo.com/2017-06-30/users/${this.sub}/rewards/${idReward}`;
+      const patchBody = {
+        consumed: true,
+        learningLanguage: this.userInfo.learningLanguage,
+        fromLanguage: this.userInfo.fromLanguage
+      };
+      return await this.sendRequest({ url: patchUrl, payload: patchBody, headers: this.defaultHeaders, method: "PATCH" });
+    }
+
+    async farmStoryOnce(config = {}) {
+      const startTime = getCurrentUnixTimestamp();
+      const fromLanguage = this.userInfo.fromLanguage;
+      const completeUrl = `https://stories.duolingo.com/api2/stories/en-${fromLanguage}-the-passport/complete`;
+      const storyPayload = {
+        awardXp: true,
+        isFeaturedStoryInPracticeHub: false,
+        completedBonusChallenge: true,
+        mode: "READ",
+        isV2Redo: false,
+        isV2Story: false,
+        isLegendaryMode: true,
+        masterVersion: false,
+        maxScore: 0,
+        numHintsUsed: 0,
+        score: 0,
+        startTime,
+        fromLanguage,
+        learningLanguage: this.userInfo.learningLanguage,
+        hasXpBoost: false,
+        ...config.storyPayload || {}
+      };
+      return await this.sendRequest({ url: completeUrl, payload: storyPayload, headers: this.defaultHeaders, method: "POST" });
+    }
+
+    async farmSessionOnce(config = {}) {
+      const startTime = config.startTime || getCurrentUnixTimestamp();
+      const endTime = config.endTime || startTime + 60;
+      const sessionPayload = {
+        challengeTypes: [],
+        fromLanguage: this.userInfo.fromLanguage,
+        learningLanguage: this.userInfo.learningLanguage,
+        type: "GLOBAL_PRACTICE",
+        ...config.sessionPayload || {}
+      };
+      const sessionRes = await this.sendRequest({ url: "https://www.duolingo.com/2017-06-30/sessions", payload: sessionPayload, headers: this.defaultHeaders, method: "POST" });
+      const sessionData = await sessionRes.json();
+      const updateSessionPayload = {
+        id: sessionData.id,
+        metadata: sessionData.metadata,
+        type: sessionData.type,
+        fromLanguage: this.userInfo.fromLanguage,
+        learningLanguage: this.userInfo.learningLanguage,
+        challenges: [],
+        adaptiveChallenges: [],
+        sessionExperimentRecord: [],
+        experiments_with_treatment_contexts: [],
+        adaptiveInterleavedChallenges: [],
+        sessionStartExperiments: [],
+        trackingProperties: [],
+        ttsAnnotations: [],
+        heartsLeft: 0,
+        startTime,
+        enableBonusPoints: false,
+        endTime,
+        failed: false,
+        maxInLessonStreak: 9,
+        shouldLearnThings: true,
+        ...config.updateSessionPayload || {}
+      };
+      const updateRes = await this.sendRequest({ url: `https://www.duolingo.com/2017-06-30/sessions/${sessionData.id}`, payload: updateSessionPayload, headers: this.defaultHeaders, method: "PUT" });
+      return updateRes;
     }
   }
 
-  async farmXP() {
-    const response = await farmXpOnce();
-    if (response.ok) {
-      const data = await response.json();
-      const earned = data?.awardedXp || 0;
-      totalEarned.xp += earned;
-      updateEarnedStats();
-      logToConsole(`Thread ${this.id} earned ${earned} XP`, 'success');
-      return earned;
+  class SettingsManager {
+    constructor(shadowRoot, apiService = null) {
+      this.shadowRoot = shadowRoot;
+      this.apiService = apiService;
+      this.DEFAULT_SETTINGS = {
+        autoOpenUI: false,
+        autoStart: false,
+        defaultOption: 1,
+        hideUsername: false,
+        keepScreenOn: false,
+        delayTime: 500,
+        retryTime: 1000,
+        autoStopTime: 0,
+        darkMode: false,
+        compactUI: false,
+        showProgress: false,
+        fontSize: "medium"
+      };
+      this.settings = this.loadSettings();
     }
-    throw new Error(`XP farming failed: ${response.status}`);
-  }
 
-  async farmGem() {
-    const response = await farmGemOnce();
-    if (response.ok) {
-      totalEarned.gems += 30;
-      updateEarnedStats();
-      logToConsole(`Thread ${this.id} earned 30 gems`, 'success');
-      return 30;
+    loadSettings() {
+      try {
+        const saved = localStorage.getItem("DuoFarmerSettings");
+        if (saved) {
+          return { ...this.DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        }
+        return { ...this.DEFAULT_SETTINGS };
+      } catch (error) {
+        return { ...this.DEFAULT_SETTINGS };
+      }
     }
-    throw new Error(`Gem farming failed: ${response.status}`);
-  }
 
-  stop() {
-    this.isActive = false;
-    if (this.progressElement) {
-      this.progressElement.remove();
+    saveSettings(settings) {
+      this.settings = settings;
+      localStorage.setItem("DuoFarmerSettings", JSON.stringify(settings));
+    }
+
+    getSettings() {
+      return { ...this.settings };
+    }
+
+    loadSettingsToUI() {
+      const elements = this.getElements();
+      if (elements.autoOpenUI) elements.autoOpenUI.checked = this.settings.autoOpenUI;
+      if (elements.autoStart) elements.autoStart.checked = this.settings.autoStart;
+      if (elements.defaultOption) elements.defaultOption.value = this.settings.defaultOption.toString();
+      if (elements.hideUsername) elements.hideUsername.checked = this.settings.hideUsername;
+      if (elements.keepScreenOn) elements.keepScreenOn.checked = this.settings.keepScreenOn;
+      if (elements.delayTime) elements.delayTime.value = this.settings.delayTime;
+      if (elements.retryTime) elements.retryTime.value = this.settings.retryTime;
+      if (elements.autoStopTime) elements.autoStopTime.value = this.settings.autoStopTime;
+      if (elements.darkMode) elements.darkMode.checked = this.settings.darkMode;
+      if (elements.compactUI) elements.compactUI.checked = this.settings.compactUI;
+      if (elements.showProgress) elements.showProgress.checked = this.settings.showProgress;
+      if (elements.fontSize) elements.fontSize.value = this.settings.fontSize;
+    }
+
+    saveSettingsFromUI() {
+      const elements = this.getElements();
+      const settings = {
+        autoOpenUI: elements.autoOpenUI?.checked || false,
+        autoStart: elements.autoStart?.checked || false,
+        defaultOption: parseInt(elements.defaultOption?.value) || 1,
+        hideUsername: elements.hideUsername?.checked || false,
+        keepScreenOn: elements.keepScreenOn?.checked || false,
+        delayTime: Math.max(100, Math.min(10000, parseInt(elements.delayTime?.value) || 500)),
+        retryTime: Math.max(100, Math.min(10000, parseInt(elements.retryTime?.value) || 1000)),
+        autoStopTime: parseInt(elements.autoStopTime?.value) || 0,
+        darkMode: elements.darkMode?.checked || false,
+        compactUI: elements.compactUI?.checked || false,
+        showProgress: elements.showProgress?.checked || false,
+        fontSize: elements.fontSize?.value || "medium"
+      };
+      this.saveSettings(settings);
+      return settings;
+    }
+
+    getElements() {
+      return {
+        autoOpenUI: this.shadowRoot.getElementById("auto-open-ui"),
+        autoStart: this.shadowRoot.getElementById("auto-start"),
+        defaultOption: this.shadowRoot.getElementById("default-option"),
+        hideUsername: this.shadowRoot.getElementById("hide-username"),
+        keepScreenOn: this.shadowRoot.getElementById("keep-screen-on"),
+        delayTime: this.shadowRoot.getElementById("delay-time"),
+        retryTime: this.shadowRoot.getElementById("retry-time"),
+        autoStopTime: this.shadowRoot.getElementById("auto-stop-time"),
+        darkMode: this.shadowRoot.getElementById("dark-mode"),
+        compactUI: this.shadowRoot.getElementById("compact-ui"),
+        showProgress: this.shadowRoot.getElementById("show-progress"),
+        fontSize: this.shadowRoot.getElementById("font-size"),
+        saveSettings: this.shadowRoot.getElementById("save-settings"),
+        quickLogout: this.shadowRoot.getElementById("quick-logout"),
+        resetTheme: this.shadowRoot.getElementById("reset-theme"),
+        getJwtToken: this.shadowRoot.getElementById("get-jwt-token"),
+        resetSetting: this.shadowRoot.getElementById("reset-setting"),
+        settingsContainer: this.shadowRoot.getElementById("settings-container"),
+        setAccountPublic: this.shadowRoot.getElementById("set-account-public"),
+        setAccountPrivate: this.shadowRoot.getElementById("set-account-private")
+      };
+    }
+
+    addEventListeners() {
+      const elements = this.getElements();
+      elements.saveSettings.addEventListener("click", () => {
+        this.saveSettingsFromUI();
+        alert("Settings saved successfully, reload the page to apply changes!");
+        confirm("Reload now?") && location.reload();
+      });
+      elements.quickLogout.addEventListener("click", () => {
+        if (confirm("Are you sure you want to logout?")) {
+          window.location.href = "https://www.duolingo.com/logout";
+        }
+      });
+      elements.resetTheme?.addEventListener("click", () => {
+        // Not implemented in new UI
+      });
+      elements.getJwtToken.addEventListener("click", () => {
+        const token = getJwtToken();
+        if (token) {
+          confirm(`Your JWT Token:\n\n${token}\n\nCopy to clipboard?`) && navigator.clipboard.writeText(token);
+        }
+      });
+      elements.resetSetting.addEventListener("click", () => {
+        if (confirm("Reset all settings to default? This cannot be undone.")) {
+          localStorage.removeItem("DuoFarmerSettings");
+          this.settings = { ...this.DEFAULT_SETTINGS };
+          this.loadSettingsToUI();
+          alert("All settings reset successfully! Reload to apply changes.");
+        }
+      });
+      elements.setAccountPublic.addEventListener("click", async () => {
+        if (confirm("Are you sure you want to set your account to public?")) {
+          try {
+            await this.apiService.setPrivacyStatus(false);
+            alert("Account set to public successfully! Reload the page to see changes.");
+          } catch (error) {
+            alert("Failed to set account to public: " + error.message);
+          }
+        }
+      });
+      elements.setAccountPrivate.addEventListener("click", async () => {
+        if (confirm("Are you sure you want to set your account to private?")) {
+          try {
+            await this.apiService.setPrivacyStatus(true);
+            alert("Account set to private successfully! Reload the page to see changes.");
+          } catch (error) {
+            alert("Failed to set account to private: " + error.message);
+          }
+        }
+      });
+    }
+
+    addEventSettings(container) {
+      const elements = this.getElements();
+      const settingsBtn = this.shadowRoot.getElementById("settings-btn");
+      const settingsContainer = elements.settingsContainer;
+      const settingsClose = this.shadowRoot.getElementById("settings-close");
+      const toggleModal = (modalElement, mainElement) => ({
+        show: () => {
+          mainElement.style.display = "none";
+          modalElement.style.display = "flex";
+        },
+        hide: () => {
+          modalElement.style.display = "none";
+          mainElement.style.display = "flex";
+        }
+      });
+      const settingsModal = toggleModal(settingsContainer, container);
+      settingsBtn.addEventListener("click", settingsModal.show);
+      settingsClose.addEventListener("click", settingsModal.hide);
+    }
+
+    loadDefaultFarmingOption(optionsArray) {
+      const select = this.shadowRoot.getElementById("select-option");
+      const optionIndex = this.settings.defaultOption;
+      select.selectedIndex = optionIndex;
+    }
+
+    populateDefaultOptionSelect(optionsArray) {
+      const select = this.shadowRoot.getElementById("default-option");
+      select.innerHTML = "";
+      optionsArray.forEach((opt, index) => {
+        const option = document.createElement("option");
+        option.value = index.toString();
+        option.textContent = opt.label;
+        if (opt.disabled) option.disabled = true;
+        select.appendChild(option);
+      });
     }
   }
 
-  createProgressBar() {
-    const container = document.getElementById('_thread_bars');
-    if (!container) return;
+  let runtimeSettings = {
+    delayTime: 500,
+    retryTime: 1000,
+    autoStopTime: 0
+  };
+  let jwt = null;
+  let defaultHeaders = null;
+  let userInfo = null;
+  let sub = null;
+  let skillId = null;
+  let isRunning = false;
+  let shadowRoot = null;
+  let apiService = null;
+  let settingsManager = null;
+  let farmOptions = [];
+  let autoStopTimerId = null;
 
-    this.progressElement = document.createElement('div');
-    this.progressElement.className = '_thread_bar';
-    this.progressElement.innerHTML = `
-      <div class="_thread_id">Thread ${this.id}</div>
-      <div class="_thread_progress_bar">
-        <div class="_thread_progress_fill" style="width: 0%"></div>
-      </div>
-      <div class="_thread_status">Starting...</div>
-    `;
-    container.appendChild(this.progressElement);
-  }
-
-  updateProgress() {
-    if (!this.progressElement) return;
-
-    const successRate = this.stats.requests > 0 ?
-      (this.stats.successes / this.stats.requests * 100) : 100;
-
-    const fillElement = this.progressElement.querySelector('._thread_progress_fill');
-    const statusElement = this.progressElement.querySelector('._thread_status');
-
-    fillElement.style.width = `${Math.min(successRate, 100)}%`;
-    statusElement.textContent = `${this.stats.successes}/${this.stats.requests}`;
-
-    // Update fill color based on success rate
-    if (successRate >= 90) {
-      fillElement.style.background = 'var(--gradient-success)';
-    } else if (successRate >= 70) {
-      fillElement.style.background = 'var(--warning-color)';
-    } else {
-      fillElement.style.background = 'var(--error-color)';
-    }
-  }
-}
-
-// Utility functions
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-const logToConsole = (message, type = 'info') => {
-  const console = document.getElementById('_console_output');
-  if (!console) return;
-
-  const timestamp = new Date().toLocaleTimeString();
-  const line = document.createElement('div');
-  line.className = `_console_line _${type}`;
-  line.innerHTML = `
-    <span class="_timestamp">[${timestamp}]</span>
-    <span class="_message">${message}</span>
-  `;
-
-  console.appendChild(line);
-
-  // Auto scroll if enabled
-  const autoScroll = document.getElementById('_auto_scroll');
-  if (autoScroll && autoScroll.classList.contains('_active')) {
-    console.scrollTop = console.scrollHeight;
-  }
-
-  // Keep only last 100 lines
-  while (console.children.length > 100) {
-    console.removeChild(console.firstChild);
-  }
-};
-
-const updateEarnedStats = () => {
-  const elements = {
-    xp: document.getElementById('_earned_xp'),
-    gems: document.getElementById('_earned_gems'),
-    streak: document.getElementById('_earned_streak')
+  const getElements = () => {
+    return {
+      startBtn: shadowRoot.getElementById("start-btn"),
+      stopBtn: shadowRoot.getElementById("stop-btn"),
+      select: shadowRoot.getElementById("select-option"),
+      floatingBtn: shadowRoot.getElementById("floating-btn"),
+      container: shadowRoot.getElementById("container"),
+      overlay: shadowRoot.getElementById("overlay"),
+      notify: shadowRoot.getElementById("notify"),
+      username: shadowRoot.getElementById("username"),
+      from: shadowRoot.getElementById("from"),
+      learn: shadowRoot.getElementById("learn"),
+      streak: shadowRoot.getElementById("streak"),
+      gem: shadowRoot.getElementById("gem"),
+      xp: shadowRoot.getElementById("xp"),
+      settingsBtn: shadowRoot.getElementById("settings-btn"),
+      settingsContainer: shadowRoot.getElementById("settings-container"),
+      settingsClose: shadowRoot.getElementById("settings-close"),
+      userInfoDisplay: shadowRoot.getElementById("user-info-display"),
+      setAccountPublic: shadowRoot.getElementById("set-account-public"),
+      setAccountPrivate: shadowRoot.getElementById("set-account-private")
+    };
   };
 
-  if (elements.xp) elements.xp.textContent = totalEarned.xp.toLocaleString();
-  if (elements.gems) elements.gems.textContent = totalEarned.gems.toLocaleString();
-  if (elements.streak) elements.streak.textContent = totalEarned.streak;
-
-  // Update success rate
-  const successRate = farmingStats.sessions > 0 ?
-    ((farmingStats.sessions - farmingStats.errors) / farmingStats.sessions * 100) : 100;
-  const successElement = document.getElementById('_success_rate');
-  if (successElement) {
-    successElement.textContent = `${successRate.toFixed(1)}%`;
-  }
-
-  // Update user info if available
-  if (userInfo) {
-    userInfo.totalXp += totalEarned.xp;
-    userInfo.gems += totalEarned.gems;
-    userInfo.streak += totalEarned.streak;
-    updateUserInfo();
-  }
-};
-
-const updateFarmingTime = () => {
-  if (!farmingStats.startTime) return;
-
-  const elapsed = Date.now() - farmingStats.startTime;
-  const hours = Math.floor(elapsed / 3600000);
-  const minutes = Math.floor((elapsed % 3600000) / 60000);
-  const seconds = Math.floor((elapsed % 60000) / 1000);
-
-  const timeElement = document.getElementById('_farming_time');
-  if (timeElement) {
-    timeElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
-};
-
-// Interface management
-const setInterfaceVisible = (visible) => {
-  const container = document.getElementById("_container");
-  const backdrop = document.getElementById("_backdrop");
-
-  if (container && backdrop) {
-    container.style.display = visible ? "flex" : "none";
-    backdrop.style.display = visible ? "block" : "none";
-  }
-};
-
-const isInterfaceVisible = () => {
-  const container = document.getElementById("_container");
-  return container && container.style.display !== "none";
-};
-
-const toggleInterface = () => {
-  setInterfaceVisible(!isInterfaceVisible());
-};
-
-const toggleSection = (sectionId) => {
-  const section = document.getElementById(sectionId);
-  if (section) {
-    section.classList.toggle('_collapsed');
-    const chevron = section.querySelector('._chevron');
-    if (chevron) {
-      chevron.classList.toggle('_rotated');
+  const setRunningState = (running) => {
+    isRunning = running;
+    const { startBtn, stopBtn, select } = getElements();
+    if (running) {
+      startBtn.hidden = true;
+      stopBtn.hidden = false;
+      stopBtn.disabled = true;
+      stopBtn.classList.add("disabled");
+      select.disabled = true;
+    } else {
+      stopBtn.hidden = true;
+      startBtn.hidden = false;
+      startBtn.disabled = true;
+      startBtn.classList.add("disabled");
+      select.disabled = false;
+      if (autoStopTimerId) {
+        clearTimeout(autoStopTimerId);
+        autoStopTimerId = null;
+      }
     }
-  }
-};
+    setTimeout(() => {
+      const { startBtn: btn, stopBtn: stop } = getElements();
+      btn.classList.remove("disabled");
+      btn.disabled = false;
+      stop.classList.remove("disabled");
+      stop.disabled = false;
+    }, 3000);
+  };
 
-// Theme management
-const applyTheme = (theme) => {
-  currentTheme = theme;
-  localStorage.setItem('duofarmer_theme', theme);
-
-  const elements = [
-    document.getElementById("_container"),
-    document.getElementById("_floating_btn")
-  ];
-
-  elements.forEach(el => {
-    if (el) {
-      el.className = el.className.replace(/theme-\w+/, `theme-${theme}`);
+  const disableAllControls = (notifyMessage = null) => {
+    const { startBtn, stopBtn, select } = getElements();
+    startBtn.disabled = true;
+    startBtn.classList.add("disabled");
+    stopBtn.disabled = true;
+    select.disabled = true;
+    if (notifyMessage) {
+      updateNotify(notifyMessage);
     }
-  });
+  };
 
-  // Update theme selector
-  document.querySelectorAll('._theme_option').forEach(btn => {
-    btn.classList.toggle('_active', btn.dataset.theme === theme);
-  });
-};
+  const initInterface = () => {
+    const container = document.createElement("div");
+    shadowRoot = container.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = cssText;
+    shadowRoot.appendChild(style);
+    const content = document.createElement("div");
+    content.innerHTML = templateRaw;
+    shadowRoot.appendChild(content);
+    document.body.appendChild(container);
 
-// License system
-const validateLicense = async (key) => {
-  if (!key) return false;
-
-  try {
-    logToConsole('Validating license key...', 'info');
-
-    // Try to fetch from GitHub (replace with your actual URL)
-    const response = await fetch(KEY_API_URL).catch(() => null);
-
-    if (response && response.ok) {
-      const data = await response.json();
-      return data.validKeys && data.validKeys.includes(key);
+    const settingsContainer = shadowRoot.getElementById("settings-container");
+    if (settingsContainer) {
+      settingsContainer.style.display = "none";
     }
 
-    // Demo keys for testing
-    const demoKeys = [
-      'TOOLXAM',
-      'KHONGTHESUDUNG',
-      'NEXUSSSS11',
-      'KHONGCOKEY001',
-      'TUITHICHBAN9999'
+    const requiredElements = [
+      "start-btn",
+      "stop-btn",
+      "select-option",
+      "floating-btn",
+      "container",
+      "overlay",
+      "notify"
     ];
-
-    return demoKeys.includes(key);
-
-  } catch (error) {
-    logToConsole(`License validation error: ${error.message}`, 'error');
-    return false;
-  }
-};
-
-const handleLicenseVerification = async () => {
-  const input = document.getElementById('_license_input');
-  const button = document.getElementById('_verify_btn');
-  const status = document.getElementById('_license_status');
-  const mainContent = document.getElementById('_main_content');
-  const section = document.getElementById('_license_section');
-
-  if (!input || !button) return;
-
-  const key = input.value.trim();
-  if (!key) {
-    logToConsole('Please enter a license key', 'error');
-    return;
-  }
-
-  // Update button state
-  const originalText = button.innerHTML;
-  button.innerHTML = '<span class="_btn_content"><span class="_btn_icon">⏳</span><span class="_btn_text">Verifying...</span></span>';
-  button.disabled = true;
-
-  const isValid = await validateLicense(key);
-
-  if (isValid) {
-    isKeyValid = true;
-    localStorage.setItem('duofarmer_key', key);
-    localStorage.setItem('duofarmer_key_valid', 'true');
-
-    status.textContent = '✓ Verified';
-    status.className = '_status_success';
-
-    if (mainContent) mainContent.style.display = 'block';
-    if (section) section.classList.add('_collapsed');
-
-    logToConsole('License verified successfully!', 'success');
-
-    // Initialize farming features
-    await initializeFarming();
-
-  } else {
-    isKeyValid = false;
-    localStorage.removeItem('duofarmer_key');
-    localStorage.removeItem('duofarmer_key_valid');
-
-    status.textContent = '⚠ Invalid';
-    status.className = '_status_error';
-
-    if (mainContent) mainContent.style.display = 'none';
-
-    logToConsole('Invalid license key. Please contact @tw1sk on Discord.', 'error');
-  }
-
-  // Reset button
-  button.innerHTML = originalText;
-  button.disabled = false;
-};
-
-// Event listeners
-const addEventListeners = () => {
-  // Floating button
-  document.getElementById('_floating_btn')?.addEventListener('click', (e) => {
-    // Create ripple effect
-    const button = e.currentTarget;
-    const ripple = button.querySelector('._btn_ripple');
-    const rect = button.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height);
-    const x = e.clientX - rect.left - size / 2;
-    const y = e.clientY - rect.top - size / 2;
-
-    ripple.style.width = ripple.style.height = size + 'px';
-    ripple.style.left = x + 'px';
-    ripple.style.top = y + 'px';
-    ripple.style.transform = 'scale(0)';
-    ripple.style.opacity = '0.7';
-
-    setTimeout(() => {
-      ripple.style.transform = 'scale(4)';
-      ripple.style.opacity = '0';
-    }, 10);
-
-    toggleInterface();
-  });
-
-  // Header controls
-  document.getElementById('_minimize_btn')?.addEventListener('click', () => {
-    setInterfaceVisible(false);
-  });
-
-  document.getElementById('_close_btn')?.addEventListener('click', () => {
-    if (isRunning) {
-      if (confirm('Farming is active. Are you sure you want to close?')) {
-        stopFarming();
-        setInterfaceVisible(false);
+    for (const id of requiredElements) {
+      if (!shadowRoot.getElementById(id)) {
+        throw new Error(`Required UI element '${id}' not found in template. Template may be corrupted.`);
       }
+    }
+  };
+
+  const showElement = (element) => {
+    if (element) element.style.display = "flex";
+  };
+
+  const hideElement = (element) => {
+    if (element) element.style.display = "none";
+  };
+
+  const setInterfaceVisible = (visible) => {
+    const { container, overlay } = getElements();
+    if (visible) {
+      showElement(container);
+      showElement(overlay);
     } else {
-      setInterfaceVisible(false);
+      hideElement(container);
+      hideElement(overlay);
     }
-  });
+  };
 
-  document.getElementById('_settings_btn')?.addEventListener('click', () => {
-    document.getElementById('_settings_modal').style.display = 'flex';
-  });
-
-  // License verification
-  document.getElementById('_verify_btn')?.addEventListener('click', handleLicenseVerification);
-  document.getElementById('_license_input')?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleLicenseVerification();
-  });
-
-  // Farming controls
-  document.getElementById('_start_farming')?.addEventListener('click', startFarming);
-  document.getElementById('_stop_farming')?.addEventListener('click', stopFarming);
-  document.getElementById('_pause_farming')?.addEventListener('click', pauseFarming);
-
-  // Thread slider
-  const slider = document.getElementById('_thread_slider');
-  const display = document.getElementById('_thread_display');
-  slider?.addEventListener('input', (e) => {
-    if (display) display.textContent = e.target.value;
-    updateActiveThreadsDisplay();
-  });
-
-  // Refresh button
-  document.getElementById('_refresh_btn')?.addEventListener('click', async () => {
-    const button = document.getElementById('_refresh_btn');
-    if (button) button.classList.add('_loading');
-
-    await refreshUserData();
-
-    if (button) button.classList.remove('_loading');
-  });
-
-  // Console controls
-  document.getElementById('_clear_console')?.addEventListener('click', () => {
-    const console = document.getElementById('_console_output');
-    if (console) console.innerHTML = '';
-  });
-
-  document.getElementById('_auto_scroll')?.addEventListener('click', (e) => {
-    e.currentTarget.classList.toggle('_active');
-  });
-
-  // Settings modal
-  document.getElementById('_close_modal')?.addEventListener('click', () => {
-    document.getElementById('_settings_modal').style.display = 'none';
-  });
-
-  document.getElementById('_settings_modal')?.addEventListener('click', (e) => {
-    if (e.target.classList.contains('_modal_overlay')) {
-      document.getElementById('_settings_modal').style.display = 'none';
-    }
-  });
-
-  // Theme selection
-  document.querySelectorAll('._theme_option').forEach(btn => {
-    btn.addEventListener('click', () => {
-      applyTheme(btn.dataset.theme);
+  const addEventFloatingBtn = () => {
+    const { floatingBtn } = getElements();
+    floatingBtn.addEventListener("click", () => {
+      if (isRunning) {
+        if (confirm("Hacklingo is farming. Do you want to stop and hide UI?")) {
+          setRunningState(false);
+          setInterfaceVisible(false);
+        }
+        return;
+      }
+      toggleInterface();
     });
-  });
-
-  // Settings controls
-  document.getElementById('_delay_slider')?.addEventListener('input', (e) => {
-    const value = e.target.value;
-    document.getElementById('_delay_value').textContent = `${value}ms`;
-  });
-
-  // Stats reset
-  document.getElementById('_reset_stats')?.addEventListener('click', resetStats);
-
-  // Export stats
-  document.getElementById('_export_stats')?.addEventListener('click', exportStats);
-};
-
-// Farming functions
-const startFarming = async () => {
-  if (!isKeyValid) {
-    logToConsole('License verification required', 'error');
-    return;
-  }
-
-  if (isRunning) return;
-
-  const mode = document.getElementById('_farming_mode')?.value;
-  const threadCount = parseInt(document.getElementById('_thread_slider')?.value || '3');
-
-  isRunning = true;
-  farmingStats.startTime = Date.now();
-  farmingStats.sessions = 0;
-  farmingStats.errors = 0;
-
-  // Update UI
-  document.getElementById('_start_farming').style.display = 'none';
-  document.getElementById('_stop_farming').style.display = 'inline-flex';
-  document.getElementById('_pause_farming').style.display = 'inline-flex';
-
-  logToConsole(`Starting ${mode} with ${threadCount} threads`, 'success');
-
-  // Start farming timer
-  const timer = setInterval(updateFarmingTime, 1000);
-
-  try {
-    switch (mode) {
-      case 'xp_multi':
-        await startMultiThreadedFarming('xp', threadCount);
-        break;
-      case 'gem_multi':
-        await startMultiThreadedFarming('gem', threadCount);
-        break;
-      case 'mixed_farming':
-        await startMixedFarming(threadCount);
-        break;
-      case 'streak_repair':
-        await repairStreak();
-        break;
-      case 'streak_farm':
-        await farmStreakLoop();
-        break;
-      default:
-        logToConsole(`Unknown farming mode: ${mode}`, 'error');
-    }
-  } catch (error) {
-    logToConsole(`Farming error: ${error.message}`, 'error');
-  } finally {
-    clearInterval(timer);
-  }
-};
-
-const stopFarming = () => {
-  if (!isRunning) return;
-
-  isRunning = false;
-
-  // Stop all threads
-  activeThreads.forEach(thread => thread.stop());
-  activeThreads = [];
-
-  // Update UI
-  document.getElementById('_start_farming').style.display = 'inline-flex';
-  document.getElementById('_stop_farming').style.display = 'none';
-  document.getElementById('_pause_farming').style.display = 'none';
-
-  // Clear progress bars
-  const threadBars = document.getElementById('_thread_bars');
-  if (threadBars) threadBars.innerHTML = '';
-
-  updateActiveThreadsDisplay();
-  logToConsole('Farming stopped', 'info');
-};
-
-const pauseFarming = () => {
-  // Toggle pause state
-  const isPaused = document.getElementById('_pause_farming').textContent.includes('Resume');
-
-  if (isPaused) {
-    // Resume farming
-    activeThreads.forEach(thread => thread.isActive = true);
-    document.getElementById('_pause_farming').innerHTML = '<span class="_btn_content"><span class="_btn_icon">⏸</span><span class="_btn_text">Pause</span></span>';
-    logToConsole('Farming resumed', 'info');
-  } else {
-    // Pause farming
-    activeThreads.forEach(thread => thread.isActive = false);
-    document.getElementById('_pause_farming').innerHTML = '<span class="_btn_content"><span class="_btn_icon">▶</span><span class="_btn_text">Resume</span></span>';
-    logToConsole('Farming paused', 'warning');
-  }
-};
-
-const startMultiThreadedFarming = async (type, threadCount) => {
-  activeThreads = [];
-
-  for (let i = 1; i <= threadCount; i++) {
-    const worker = new FarmingWorker(i, type);
-    activeThreads.push(worker);
-
-    // Start thread with slight delay to avoid rate limiting
-    setTimeout(() => {
-      if (isRunning) worker.start();
-    }, i * 100);
-  }
-
-  updateActiveThreadsDisplay();
-
-  // Wait for all threads to complete (they run until stopped)
-  await new Promise(resolve => {
-    const checkInterval = setInterval(() => {
-      if (!isRunning || activeThreads.every(thread => !thread.isActive)) {
-        clearInterval(checkInterval);
-        resolve();
-      }
-    }, 1000);
-  });
-};
-
-const startMixedFarming = async (threadCount) => {
-  activeThreads = [];
-  const types = ['xp', 'gem'];
-
-  for (let i = 1; i <= threadCount; i++) {
-    const type = types[(i - 1) % types.length];
-    const worker = new FarmingWorker(i, type);
-    activeThreads.push(worker);
-
-    setTimeout(() => {
-      if (isRunning) worker.start();
-    }, i * 150);
-  }
-
-  updateActiveThreadsDisplay();
-
-  await new Promise(resolve => {
-    const checkInterval = setInterval(() => {
-      if (!isRunning || activeThreads.every(thread => !thread.isActive)) {
-        clearInterval(checkInterval);
-        resolve();
-      }
-    }, 1000);
-  });
-};
-
-const updateActiveThreadsDisplay = () => {
-  const display = document.getElementById('_active_threads');
-  if (display) {
-    display.textContent = activeThreads.filter(thread => thread.isActive).length;
-  }
-};
-
-// Original farming functions (adapted for multi-threading)
-const getJwtToken = () => {
-  const cookies = document.cookie.split(";");
-  for (let cookie of cookies) {
-    cookie = cookie.trim();
-    if (cookie.startsWith("jwt_token=")) {
-      return cookie.substring("jwt_token=".length);
-    }
-  }
-  return null;
-};
-
-const decodeJwtToken = (token) => {
-  const base64Url = token.split(".")[1];
-  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-  const jsonPayload = decodeURIComponent(
-    atob(base64)
-      .split("")
-      .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-      .join("")
-  );
-  return JSON.parse(jsonPayload);
-};
-
-const formatHeaders = (jwt) => ({
-  "Content-Type": "application/json",
-  Authorization: "Bearer " + jwt,
-  "User-Agent": navigator.userAgent,
-});
-
-const getUserInfo = async (sub) => {
-  const userInfoUrl = `https://www.duolingo.com/2017-06-30/users/${sub}?fields=id,username,fromLanguage,learningLanguage,streak,totalXp,level,numFollowers,numFollowing,gems,creationDate,streakData`;
-  const response = await fetch(userInfoUrl, {
-    method: "GET",
-    headers: defaultHeaders,
-  });
-  return await response.json();
-};
-
-const sendRequestWithDefaultHeaders = async ({ url, payload, headers = {}, method = "GET" }) => {
-  const mergedHeaders = { ...defaultHeaders, ...headers };
-  return await fetch(url, {
-    method,
-    headers: mergedHeaders,
-    body: payload ? JSON.stringify(payload) : undefined,
-  });
-};
-
-const farmXpOnce = async () => {
-  const startTime = Math.floor(Date.now() / 1000);
-  const fromLanguage = userInfo.fromLanguage;
-  const completeUrl = `https://stories.duolingo.com/api2/stories/en-${fromLanguage}-the-passport/complete`;
-
-  const payload = {
-    awardXp: true,
-    isFeaturedStoryInPracticeHub: false,
-    completedBonusChallenge: true,
-    mode: "READ",
-    isV2Redo: false,
-    isV2Story: false,
-    isLegendaryMode: true,
-    masterVersion: false,
-    maxScore: 0,
-    numHintsUsed: 0,
-    score: 0,
-    startTime: startTime,
-    fromLanguage: fromLanguage,
-    learningLanguage: "en",
-    hasXpBoost: false,
-    happyHourBonusXp: 449,
   };
 
-  return await sendRequestWithDefaultHeaders({
-    url: completeUrl,
-    payload: payload,
-    method: "POST",
-  });
-};
-
-const farmGemOnce = async () => {
-  const idReward = "SKILL_COMPLETION_BALANCED-dd2495f4_d44e_3fc3_8ac8_94e2191506f0-2-GEMS";
-  const patchUrl = `https://www.duolingo.com/2017-06-30/users/${sub}/rewards/${idReward}`;
-
-  const patchData = {
-    consumed: true,
-    learningLanguage: userInfo.learningLanguage,
-    fromLanguage: userInfo.fromLanguage,
+  const addEventStartBtn = () => {
+    const { startBtn, select } = getElements();
+    startBtn.addEventListener("click", async () => {
+      setRunningState(true);
+      if (runtimeSettings.autoStopTime > 0) {
+        autoStopTimerId = setTimeout(() => {
+          alert(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+          updateNotify(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+          setRunningState(false);
+        }, runtimeSettings.autoStopTime * 60 * 1000);
+      }
+      const selected = select.options[select.selectedIndex];
+      const optionData = {
+        type: selected.getAttribute("data-type"),
+        amount: Number(selected.getAttribute("data-amount")),
+        value: selected.value,
+        label: selected.textContent,
+        config: selected.getAttribute("data-config") ? JSON.parse(selected.getAttribute("data-config")) : {}
+      };
+      await farmSelectedOption(optionData);
+    });
   };
 
-  return await sendRequestWithDefaultHeaders({
-    url: patchUrl,
-    payload: patchData,
-    method: "PATCH",
-  });
-};
+  const addEventStopBtn = () => {
+    const { stopBtn } = getElements();
+    stopBtn.addEventListener("click", () => {
+      setRunningState(false);
+    });
+  };
 
-const repairStreak = async () => {
-  logToConsole('Starting streak repair...', 'info');
+  const isInterfaceVisible = () => {
+    const { container } = getElements();
+    return container.style.display !== "none" && container.style.display !== "";
+  };
 
-  try {
-    if (!userInfo.streakData?.currentStreak) {
-      logToConsole('No streak to repair!', 'error');
-      return;
+  const toggleInterface = () => {
+    setInterfaceVisible(!isInterfaceVisible());
+  };
+
+  const addEventListeners = () => {
+    addEventStartBtn();
+    addEventStopBtn();
+    const { container } = getElements();
+    settingsManager.addEventSettings(container);
+    settingsManager.addEventListeners();
+  };
+
+  const populateOptions = () => {
+    const select = shadowRoot.getElementById("select-option");
+    select.innerHTML = "";
+    farmOptions.forEach((opt) => {
+      const option = document.createElement("option");
+      option.value = opt.value;
+      option.textContent = opt.label;
+      option.setAttribute("data-type", opt.type);
+      if (opt.amount != null) option.setAttribute("data-amount", String(opt.amount));
+      if (opt.config) option.setAttribute("data-config", JSON.stringify(opt.config));
+      if (opt.disabled) option.disabled = true;
+      select.appendChild(option);
+    });
+  };
+
+  const updateNotify = (message) => {
+    const notifyText = shadowRoot.querySelector('.notify-text');
+    if (notifyText) {
+      const now = new Date().toLocaleTimeString();
+      notifyText.innerText = `[${now}] ${message}`;
+      log(`[${now}] ${message}`);
     }
+  };
 
-    const startStreakDate = userInfo.streakData.currentStreak.startDate;
-    const endStreakDate = userInfo.streakData.currentStreak.endDate;
-    const startStreakTimestamp = Math.floor(new Date(startStreakDate).getTime() / 1000);
-    const endStreakTimestamp = Math.floor(new Date(endStreakDate).getTime() / 1000);
-    const expectedStreak = Math.floor((endStreakTimestamp - startStreakTimestamp) / (60 * 60 * 24)) + 1;
+  const updateUserInfo = () => {
+    const elements = getElements();
+    if (userInfo) {
+      elements.username.innerText = userInfo.username;
+      elements.from.innerText = userInfo.fromLanguage;
+      elements.learn.innerText = userInfo.learningLanguage;
+      elements.streak.innerText = userInfo.streak;
+      elements.gem.innerText = userInfo.gems;
+      elements.xp.innerText = userInfo.totalXp;
 
-    if (expectedStreak > userInfo.streak) {
-      logToConsole(`Found ${expectedStreak - userInfo.streak} frozen days. Repairing...`, 'warning');
-
-      let currentTimestamp = Math.floor(Date.now() / 1000);
-      for (let i = 0; i < expectedStreak && isRunning; i++) {
-        await farmSessionOnce(currentTimestamp, currentTimestamp + 60);
-        currentTimestamp -= 86400;
-        logToConsole(`Repaired day ${i + 1}/${expectedStreak}`, 'info');
-        await delay(DELAY);
+      const avatarInitial = shadowRoot.getElementById('avatar-initial');
+      if (avatarInitial && userInfo.username) {
+        avatarInitial.innerText = userInfo.username.charAt(0).toUpperCase();
       }
 
-      const updatedUser = await getUserInfo(sub);
-      if (updatedUser.streak >= expectedStreak) {
-        logToConsole(`Streak repair completed! New streak: ${updatedUser.streak}`, 'success');
-        userInfo = updatedUser;
-        totalEarned.streak += (updatedUser.streak - userInfo.streak);
-        updateUserInfo();
-        updateEarnedStats();
+      if (userInfo.privacySettings &&
+          (userInfo.privacySettings.includes("DISABLE_FRIENDS_QUESTS") ||
+           userInfo.privacySettings.includes("DISABLE_LEADERBOARDS"))) {
+        hideElement(elements.setAccountPrivate);
+      } else {
+        hideElement(elements.setAccountPublic);
       }
-    } else {
-      logToConsole('No frozen streak detected', 'info');
+
+      elements.userInfoDisplay.innerText = JSON.stringify({
+        id: userInfo.id,
+        username: userInfo.username,
+        fromLanguage: userInfo.fromLanguage,
+        learningLanguage: userInfo.learningLanguage,
+        streak: userInfo.streak,
+        gems: userInfo.gems,
+        totalXp: userInfo.totalXp,
+        creationDate: userInfo.creationDate,
+        skillId,
+        jwt: "hidden - use get jwt button to view",
+        sub,
+        privacySettings: userInfo.privacySettings,
+        streakData: userInfo.streakData
+      }, null, 2);
     }
-  } catch (error) {
-    logToConsole(`Streak repair failed: ${error.message}`, 'error');
-  } finally {
-    stopFarming();
-  }
-};
+  };
 
-const farmStreakLoop = async () => {
-  logToConsole('Starting streak farming...', 'info');
-
-  const hasStreak = !!userInfo.streakData?.currentStreak;
-  const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : new Date();
-  const startFarmStreakTimestamp = Math.floor(new Date(startStreakDate).getTime() / 1000);
-  let currentTimestamp = hasStreak ? startFarmStreakTimestamp - 86400 : startFarmStreakTimestamp;
-
-  while (isRunning) {
-    try {
-      await farmSessionOnce(currentTimestamp, currentTimestamp + 60);
-      currentTimestamp -= 86400;
-      totalEarned.streak++;
-      userInfo.streak++;
-      updateUserInfo();
-      updateEarnedStats();
-      logToConsole(`Streak increased to ${userInfo.streak}`, 'success');
-      await delay(DELAY);
-    } catch (error) {
-      logToConsole(`Streak farming error: ${error.message}`, 'error');
-      await delay(DELAY * 2);
+  const updateFarmResult = (type, farmedAmount) => {
+    switch (type) {
+      case "gem":
+        userInfo = { ...userInfo, gems: userInfo.gems + farmedAmount };
+        updateNotify(`You got ${farmedAmount} gem!!!`);
+        break;
+      case "xp":
+        userInfo = { ...userInfo, totalXp: userInfo.totalXp + farmedAmount };
+        updateNotify(`You got ${farmedAmount} XP!!!`);
+        break;
+      case "streak":
+        userInfo = { ...userInfo, streak: userInfo.streak + farmedAmount };
+        updateNotify(`You got ${farmedAmount} streak! (maybe some xp too, idk)`);
+        break;
     }
-  }
-};
-
-const farmSessionOnce = async (startTime, endTime) => {
-  const sessionPayload = {
-    challengeTypes: [
-      "assist", "characterIntro", "characterMatch", "characterPuzzle", "characterSelect",
-      "characterTrace", "characterWrite", "completeReverseTranslation", "definition",
-      "dialogue", "extendedMatch", "extendedListenMatch", "form", "freeResponse",
-      "gapFill", "judge", "listen", "listenComplete", "listenMatch", "match", "name",
-      "listenComprehension", "listenIsolation", "listenSpeak", "listenTap",
-      "orderTapComplete", "partialListen", "partialReverseTranslate", "patternTapComplete",
-      "radioBinary", "radioImageSelect", "radioListenMatch", "radioListenRecognize",
-      "radioSelect", "readComprehension", "reverseAssist", "sameDifferent", "select",
-      "selectPronunciation", "selectTranscription", "svgPuzzle", "syllableTap",
-      "syllableListenTap", "speak", "tapCloze", "tapClozeTable", "tapComplete",
-      "tapCompleteTable", "tapDescribe", "translate", "transliterate",
-      "transliterationAssist", "typeCloze", "typeClozeTable", "typeComplete",
-      "typeCompleteTable", "writeComprehension",
-    ],
-    fromLanguage: userInfo.fromLanguage,
-    isFinalLevel: false,
-    isV2: true,
-    juicy: true,
-    learningLanguage: userInfo.learningLanguage,
-    smartTipsVersion: 2,
-    type: "GLOBAL_PRACTICE",
-  };
-
-  const sessionRes = await sendRequestWithDefaultHeaders({
-    url: "https://www.duolingo.com/2017-06-30/sessions",
-    payload: sessionPayload,
-    method: "POST",
-  });
-
-  const sessionData = await sessionRes.json();
-
-  const updateSessionPayload = {
-    ...sessionData,
-    heartsLeft: 0,
-    startTime: startTime,
-    enableBonusPoints: false,
-    endTime: endTime,
-    failed: false,
-    maxInLessonStreak: 9,
-    shouldLearnThings: true,
-  };
-
-  const updateRes = await sendRequestWithDefaultHeaders({
-    url: `https://www.duolingo.com/2017-06-30/sessions/${sessionData.id}`,
-    payload: updateSessionPayload,
-    method: "PUT",
-  });
-
-  return await updateRes.json();
-};
-
-// UI update functions
-const updateUserInfo = () => {
-  if (!userInfo) return;
-
-  const elements = {
-    username: document.getElementById('_username'),
-    fromLang: document.getElementById('_from_lang'),
-    learningLang: document.getElementById('_learning_lang'),
-    currentStreak: document.getElementById('_current_streak'),
-    currentGems: document.getElementById('_current_gems'),
-    currentXp: document.getElementById('_current_xp')
-  };
-
-  if (elements.username) elements.username.textContent = userInfo.username;
-  if (elements.fromLang) elements.fromLang.textContent = userInfo.fromLanguage;
-  if (elements.learningLang) elements.learningLang.textContent = userInfo.learningLanguage;
-  if (elements.currentStreak) elements.currentStreak.textContent = userInfo.streak?.toLocaleString() || '0';
-  if (elements.currentGems) elements.currentGems.textContent = userInfo.gems?.toLocaleString() || '0';
-  if (elements.currentXp) elements.currentXp.textContent = userInfo.totalXp?.toLocaleString() || '0';
-};
-
-const refreshUserData = async () => {
-  if (!sub || !defaultHeaders) return;
-
-  try {
-    logToConsole('Refreshing user data...', 'info');
-    userInfo = await getUserInfo(sub);
     updateUserInfo();
-    logToConsole('User data refreshed successfully', 'success');
-  } catch (error) {
-    logToConsole(`Failed to refresh user data: ${error.message}`, 'error');
-  }
-};
-
-const resetStats = () => {
-  totalEarned = { xp: 0, gems: 0, streak: 0 };
-  farmingStats = { sessions: 0, errors: 0, startTime: null };
-  updateEarnedStats();
-  logToConsole('Statistics reset', 'info');
-};
-
-const exportStats = () => {
-  const stats = {
-    totalEarned,
-    farmingStats,
-    userInfo: userInfo ? {
-      username: userInfo.username,
-      streak: userInfo.streak,
-      gems: userInfo.gems,
-      totalXp: userInfo.totalXp
-    } : null,
-    exportDate: new Date().toISOString(),
-    version: VERSION
   };
 
-  const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `duofarmer-stats-${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const gemFarmingLoop = async () => {
+    const gemFarmed = 30;
+    while (isRunning) {
+      try {
+        await apiService.farmGemOnce(userInfo);
+        updateFarmResult("gem", gemFarmed);
+        await delay(runtimeSettings.delayTime);
+      } catch (error) {
+        updateNotify(`Error ${error.status}! Please report in telegram group!`);
+        await delay(runtimeSettings.retryTime);
+      }
+    }
+  };
 
-  logToConsole('Statistics exported successfully', 'success');
-};
+  const xpFarmingLoop = async (value, amount, config = {}) => {
+    while (isRunning) {
+      try {
+        let response;
+        if (value === "session") {
+          response = await apiService.farmSessionOnce(config);
+        } else if (value === "story") {
+          response = await apiService.farmStoryOnce(config);
+        }
+        if (response.status > 400) {
+          updateNotify(`Something went wrong! Pls try other farming methods.
+If you are using story method, u should try with English course!`);
+          await delay(runtimeSettings.retryTime);
+          continue;
+        }
+        const responseData = await response.json();
+        const xpFarmed = (responseData?.awardedXp) || (responseData?.xpGain) || 0;
+        updateFarmResult("xp", xpFarmed);
+        await delay(runtimeSettings.delayTime);
+      } catch (error) {
+        updateNotify(`Error ${error.status}! Please report in telegram group!`);
+        await delay(runtimeSettings.retryTime);
+      }
+    }
+  };
 
-// Initialization
-const initializeFarming = async () => {
-  try {
+  const streakFarmingLoop = async () => {
+    const hasStreak = !!userInfo.streakData.currentStreak;
+    const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : new Date();
+    const startFarmStreakTimestamp = toTimestamp(startStreakDate);
+    let currentTimestamp = hasStreak ? startFarmStreakTimestamp - 86400 : startFarmStreakTimestamp;
+    while (isRunning) {
+      try {
+        const sessionRes = await apiService.farmSessionOnce({ startTime: currentTimestamp, endTime: currentTimestamp + 60 });
+        if (sessionRes) {
+          currentTimestamp -= 86400;
+          updateFarmResult("streak", 1);
+          await delay(runtimeSettings.delayTime);
+        } else {
+          updateNotify("Failed to farm streak session, I'm trying again...");
+          await delay(runtimeSettings.retryTime);
+          continue;
+        }
+      } catch (error) {
+        updateNotify(`Error in farmStreak: ${(error?.message) || error}`);
+        await delay(runtimeSettings.retryTime);
+        continue;
+      }
+    }
+  };
+
+  const farmSelectedOption = async (option) => {
+    const { type, value, amount, config } = option;
+    switch (type) {
+      case "gem":
+        gemFarmingLoop();
+        break;
+      case "xp":
+        xpFarmingLoop(value, amount, config);
+        break;
+      case "streak":
+        streakFarmingLoop();
+        break;
+    }
+  };
+
+  const loadSavedSettings = (settings) => {
+    runtimeSettings = { ...runtimeSettings, ...settings };
+    const elements = getElements();
+    if (settings.autoOpenUI) {
+      setInterfaceVisible(true);
+    }
+    if (settings.autoStart) {
+      setInterfaceVisible(true);
+      elements.startBtn.click();
+    }
+    if (settings.hideUsername) {
+      elements.username.classList.add("blur");
+    }
+    if (settings.keepScreenOn && "wakeLock" in navigator) {
+      navigator.wakeLock.request("screen").then((wakeLock) => {
+        log("Screen wake lock active");
+      });
+    }
+  };
+
+  const initVariables = async () => {
     jwt = getJwtToken();
     if (!jwt) {
-      logToConsole('Please login to Duolingo and reload the page', 'error');
-      return false;
+      disableAllControls("Please login to Duolingo and reload!");
+      return;
     }
-
     defaultHeaders = formatHeaders(jwt);
     const decodedJwt = decodeJwtToken(jwt);
     sub = decodedJwt.sub;
+    userInfo = await ApiService.getUserInfo(sub, defaultHeaders);
+    apiService = new ApiService(jwt, defaultHeaders, userInfo, sub);
+    settingsManager = new SettingsManager(shadowRoot, apiService);
+    skillId = extractSkillId(userInfo.currentCourse || {});
+    farmOptions = [
+      { type: "separator", label: "⟡ GEM FARMING ⟡", value: "", disabled: true },
+      { type: "gem", label: "Gem 30", value: "fixed", amount: 30 },
+      { type: "separator", label: "⟡ XP SESSION FARMING ⟡", value: "", disabled: true },
+      { type: "separator", label: "(slow, safe, any language)", value: "", disabled: true },
+      { type: "xp", label: "XP 10", value: "session", amount: 10, config: {} },
+      { type: "xp", label: "XP 20", value: "session", amount: 20, config: { updateSessionPayload: { hasBoost: true } } },
+      { type: "xp", label: "XP 40", value: "session", amount: 40, config: { updateSessionPayload: { hasBoost: true, type: "TARGET_PRACTICE" } } },
+      { type: "xp", label: "XP 50", value: "session", amount: 50, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10, type: "TARGET_PRACTICE" } } },
+      { type: "xp", label: "XP 110", value: "session", amount: 110, config: { sessionPayload: { type: "UNIT_TEST", skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { type: "UNIT_TEST", hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0 } } }, disabled: !skillId },
+      { type: "separator", label: "⟡ XP STORY FARMING ⟡", value: "", disabled: true },
+      { type: "separator", label: "(fast, unsafe, English only)", value: "", disabled: true },
+      { type: "xp", label: "XP 50", value: "story", amount: 50, config: {} },
+      { type: "xp", label: "XP 100", value: "story", amount: 100, config: { storyPayload: { happyHourBonusXp: 50 } } },
+      { type: "xp", label: "XP 200", value: "story", amount: 200, config: { storyPayload: { happyHourBonusXp: 150 } } },
+      { type: "xp", label: "XP 300", value: "story", amount: 300, config: { storyPayload: { happyHourBonusXp: 250 } } },
+      { type: "xp", label: "XP 400", value: "story", amount: 400, config: { storyPayload: { happyHourBonusXp: 350 } } },
+      { type: "xp", label: "XP 499", value: "story", amount: 499, config: { storyPayload: { happyHourBonusXp: 449 } } },
+      { type: "separator", label: "⟡ STREAK FARMING ⟡", value: "", disabled: true },
+      { type: "streak", label: "Streak farm (test)", value: "farm" }
+    ];
+  };
 
-    logToConsole('Loading user information...', 'info');
-    userInfo = await getUserInfo(sub);
+  const initSettings = () => {
+    settingsManager.populateDefaultOptionSelect(farmOptions);
+    settingsManager.loadDefaultFarmingOption(farmOptions);
+    settingsManager.loadSettingsToUI();
+  };
 
-    if (userInfo && userInfo.username) {
+  (async () => {
+    try {
+      initInterface();
+      setInterfaceVisible(false);
+      addEventFloatingBtn();
+      await initVariables();
+      populateOptions();
+      initSettings();
       updateUserInfo();
-      logToConsole(`Welcome ${userInfo.username}! Ready to farm.`, 'success');
-      return true;
-    } else {
-      logToConsole('Failed to load user information', 'error');
-      return false;
+      addEventListeners();
+      loadSavedSettings(settingsManager.getSettings());
+      updateNotify('Hacklingo Pro ready! For safety, I suggest that you use 2nd accounts.\nLimited or no use of "Story Farming"!');
+    } catch (err) {
+      logError(err, "Hacklingo init error!");
     }
-  } catch (error) {
-    logToConsole(`Initialization error: ${error.message}`, 'error');
-    return false;
-  }
-};
-
-const checkExistingLicense = async () => {
-  if (userKey && localStorage.getItem('duofarmer_key_valid') === 'true') {
-    const isValid = await validateLicense(userKey);
-    if (isValid) {
-      isKeyValid = true;
-      document.getElementById('_license_status').textContent = '✓ Verified';
-      document.getElementById('_license_status').className = '_status_success';
-      document.getElementById('_main_content').style.display = 'block';
-      document.getElementById('_license_section').classList.add('_collapsed');
-
-      logToConsole('License restored from storage', 'success');
-      return await initializeFarming();
-    } else {
-      // License is no longer valid, clear storage
-      localStorage.removeItem('duofarmer_key');
-      localStorage.removeItem('duofarmer_key_valid');
-      isKeyValid = false;
-    }
-  }
-  return false;
-};
-
-// Main initialization
-(async () => {
-  try {
-    // Initialize interface
-    initInterface();
-    setInterfaceVisible(false);
-
-    // Apply saved theme
-    applyTheme(currentTheme);
-
-    // Add event listeners
-    addEventListeners();
-
-    // Check existing license
-    await checkExistingLicense();
-
-    logToConsole('DuoNexus initialized successfully', 'success');
-    logToConsole('Created by tw1sk - Discord: @tw1sk', 'info');
-
-  } catch (error) {
-    console.error('Initialization failed:', error);
-  }
+  })();
 })();
