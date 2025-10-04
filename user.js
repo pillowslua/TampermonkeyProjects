@@ -1,0 +1,1666 @@
+// ==UserScript==
+// @name         DuoHacker PRO
+// @name:vi      DuoHacker PRO- Công cụ farm XP
+// @name:en      DuoHacker PRO- XP Farming Tool
+// @name:es     DuoHacker PRO- Herramienta de farmeo de XP
+// @name:fr      DuoHacker PRO- Outil de farm XP
+// @name:de      DuoHacker PRO- XP Farming Tool
+// @name:pt-BR   DuoHacker PRO- Ferramenta de farm XP
+// @name:ru      DuoHacker PRO- Инструмент для фарма XP
+// @name:zh-CN   DuoHacker PRO- XP刷分工具
+// @name:ja      DuoHacker PRO- XPファーミングツール
+// @name:ko      DuoHacker PRO- XP 파밍 도구
+// @description  Hacklingo — tool for farming XP, streaks, and gems with ultra-fast multi-thread support and API selection.
+// @description:vi  Hacklingo — công cụ farm XP, streaks và gems với tốc độ cao nhờ multi-thread và lựa chọn API.
+// @description:en  Hacklingo — tool for farming XP, streaks, and gems with ultra-fast multi-thread support and API selection.
+// @description:es  Hacklingo — herramienta para farmear XP, rachas y gemas con soporte multi-hilo de alta velocidad y selección de API.
+// @description:fr  Hacklingo — outil pour farmer XP, séries et gemmes avec un support multi-thread ultra-rapide et sélection d'API.
+// @description:de  Hacklingo — Tool zum Farmen von XP, Serien und Edelsteinen mit ultraschneller Multi-Thread-Unterstützung und API-Auswahl.
+// @description:pt-BR Hacklingo — ferramenta para farmar XP, streaks e gemas com suporte multi-thread de alta velocidade e seleção de API.
+// @description:ru  Hacklingo — инструмент для фарма XP, серий и самоцветов с ультра-быстрой многопоточностью и выбором API.
+// @description:zh-CN Hacklingo — 支持高速多线程和API选择的XP、连胜和宝石刷分工具。
+// @description:ja  Hacklingo — XP・連続日数・ジェムを超高速マルチスレッドで稼ぐツール、API選択対応。
+// @description:ko  Hacklingo — 초고속 멀티스레드와 API 선택으로 XP, 연속 기록, 보석을 파밍하는 도구.
+// @namespace    https://twisk.fun
+// @version      1.1.4
+// @author       airpl4ne
+// @author       Airplane Mode
+// @author       S
+// @match        https://*.duolingo.com/*
+// @icon         https://github.com/pillowslua/images/blob/main/Hacklingo.png?raw=true
+// @grant        none
+// @license      MIT
+// @downloadURL https://update.greasyfork.org/scripts/547813/Hacklingo.user.js
+// @updateURL https://update.greasyfork.org/scripts/547813/Hacklingo.meta.js
+// ==/UserScript==
+
+(function () {
+  'use strict';
+
+  const templateRaw = `
+    <!-- SVG Icons -->
+    <svg style="display: none;">
+      <defs>
+        <symbol id="icon-settings" viewBox="0 0 24 24">
+          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+        </symbol>
+        <symbol id="icon-gem" viewBox="0 0 24 24">
+          <path d="M12,2L2,7l10,5l10-5L12,2z M12,14.5l-8-4v6.5l8,4l8-4V10.5L12,14.5z"/>
+        </symbol>
+        <symbol id="icon-fire" viewBox="0 0 24 24">
+          <path d="M13.5,0.67s0.74,2.65,0.74,4.8c0,2.06-1.35,3.73-3.41,3.73c-2.07,0-3.63-1.67-3.63-3.73l0.03-0.36C5.21,7.51,4,10.62,4,14 c0,4.42,3.58,8,8,8s8-3.58,8-8C20,8.61,17.41,3.8,13.5,0.67z M11.71,19c-1.78,0-3.22-1.4-3.22-3.14c0-1.62,1.05-2.76,2.81-3.12 c1.77-0.36,3.6-1.21,4.62-2.58c0.39,1.29,0.59,2.65,0.59,4.04c0,2.65-2.15,4.8-4.8,4.8V19z"/>
+        </symbol>
+        <symbol id="icon-star" viewBox="0 0 24 24">
+          <path d="M12,17.27L18.18,21l-1.64-7.03L22,9.24l-7.19-0.61L12,2L9.19,8.63L2,9.24l5.46,4.73L5.82,21L12,17.27z"/>
+        </symbol>
+        <symbol id="icon-close" viewBox="0 0 24 24">
+          <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41z"/>
+        </symbol>
+        <symbol id="icon-play" viewBox="0 0 24 24">
+          <path d="M8,5v14l11-7L8,5z"/>
+        </symbol>
+        <symbol id="icon-stop" viewBox="0 0 24 24">
+          <path d="M6,6h12v12H6V6z"/>
+        </symbol>
+      </defs>
+    </svg>
+
+    <div id="overlay"></div>
+    <div id="container">
+      <div id="header">
+        <div class="header-content">
+          <svg class="logo-icon" width="32" height="32" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M13,17h-2v-6h2V17z M13,9h-2V7h2V9z"/>
+          </svg>
+          <span class="label">DuoHacker</span>
+        </div>
+        <button id="settings-btn" class="icon-btn">
+          <svg class="icon" width="20" height="20"><use href="#icon-settings"/></svg>
+        </button>
+      </div>
+
+      <div id="body">
+        <div class="user-card">
+          <div class="user-avatar">
+            <span class="avatar-text" id="avatar-initial">D</span>
+          </div>
+          <div class="user-info-grid">
+            <div class="info-item">
+              <span class="info-label">Username</span>
+              <span class="info-value" id="username">Loading...</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">From → Learning</span>
+              <span class="info-value"><span id="from">-</span> → <span id="learn">-</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card streak">
+            <svg class="stat-icon" width="24" height="24"><use href="#icon-fire"/></svg>
+            <div class="stat-content">
+              <span class="stat-label">Streak</span>
+              <span class="stat-value" id="streak">0</span>
+            </div>
+          </div>
+          <div class="stat-card gem">
+            <svg class="stat-icon" width="24" height="24"><use href="#icon-gem"/></svg>
+            <div class="stat-content">
+              <span class="stat-label">Gems</span>
+              <span class="stat-value" id="gem">0</span>
+            </div>
+          </div>
+          <div class="stat-card xp">
+            <svg class="stat-icon" width="24" height="24"><use href="#icon-star"/></svg>
+            <div class="stat-content">
+              <span class="stat-label">Total XP</span>
+              <span class="stat-value" id="xp">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="action-row">
+          <select id="select-option" class="modern-select"></select>
+          <button id="start-btn" class="action-btn start-btn">
+            <svg class="btn-icon" width="18" height="18"><use href="#icon-play"/></svg>
+            Start
+          </button>
+          <button id="stop-btn" class="action-btn stop-btn" hidden>
+            <svg class="btn-icon" width="18" height="18"><use href="#icon-stop"/></svg>
+            Stop
+          </button>
+        </div>
+
+        <div id="notify" class="notify-box">
+          <div class="notify-icon">ℹ️</div>
+          <div class="notify-text">Initializing Hacklingo...</div>
+        </div>
+      </div>
+
+      <div id="footer">
+        <span class="footer-text">Stay safe, farm responsibly 💙</span>
+      </div>
+    </div>
+
+    <div id="settings-container">
+      <div id="settings-menu" class="modal-content">
+        <div class="modal-header">
+          <span class="label">Settings</span>
+          <button id="settings-close" class="icon-btn">
+            <svg class="icon" width="20" height="20"><use href="#icon-close"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-group">
+            <h3>General</h3>
+            <div class="setting-item">
+              <span>Auto open UI on load</span>
+              <input type="checkbox" id="auto-open-ui" class="toggle-switch">
+            </div>
+            <div class="setting-item">
+              <span>Auto start farming on load</span>
+              <input type="checkbox" id="auto-start" class="toggle-switch">
+            </div>
+            <div class="setting-item">
+              <span>Default farming option</span>
+              <select id="default-option" class="modern-select"></select>
+            </div>
+            <div class="setting-item">
+              <span>Hide username</span>
+              <input type="checkbox" id="hide-username" class="toggle-switch">
+            </div>
+            <div class="setting-item">
+              <span>Keep screen on</span>
+              <input type="checkbox" id="keep-screen-on" class="toggle-switch">
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>Performance</h3>
+            <div class="setting-item">
+              <span>Delay time (100ms - 10000ms):<br><i class="muted">Lower = faster = higher ban risk</i></span>
+              <input type="number" id="delay-time" min="100" max="10000" value="500" class="number-input">
+            </div>
+            <div class="setting-item">
+              <span>Retry time (100ms - 10000ms):</span>
+              <input type="number" id="retry-time" min="100" max="10000" value="1000" class="number-input">
+            </div>
+            <div class="setting-item">
+              <span>Auto stop after (min) (0 = unlimited)</span>
+              <input type="number" id="auto-stop-time" min="0" max="60" value="0" class="number-input">
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>Advanced</h3>
+            <div class="setting-item">
+              <span>Get JWT token</span>
+              <button id="get-jwt-token" class="setting-btn">Get Token</button>
+            </div>
+            <div class="setting-item">
+              <span>Set account to public</span>
+              <button id="set-account-public" class="setting-btn">Set Public</button>
+            </div>
+            <div class="setting-item">
+              <span>Set account to private</span>
+              <button id="set-account-private" class="setting-btn">Set Private</button>
+            </div>
+            <div class="setting-item">
+              <span>Quick logout</span>
+              <button id="quick-logout" class="setting-btn danger">Logout</button>
+            </div>
+            <div class="setting-item">
+              <span>Reset settings</span>
+              <button id="reset-setting" class="setting-btn danger">Reset</button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>Links & Info</h3>
+            <div class="setting-item">
+              <span>Blank page (best performance)</span>
+              <a href="https://www.duolingo.com/errors/0">Open</a>
+            </div>
+            <div class="setting-item">
+              <span>Discord Server</span>
+              <a href="https://discord.gg/Gvmd7deFtS">Open</a>
+            </div>
+            <div class="setting-item">
+              <span>User info:</span>
+            </div>
+            <code id="user-info-display">Loading...</code>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="save-settings" class="save-btn">Save Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="floating-btn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M13,17h-2v-6h2V17z M13,9h-2V7h2V9z"/>
+      </svg>
+    </div>
+  `;
+
+  const cssText = `
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    #container {
+      width: 90vw;
+      max-width: 900px;
+      min-height: 500px;
+      max-height: 90vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      overflow: hidden;
+    }
+
+    #header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 20px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      color: #667eea;
+    }
+
+    #header .label {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .icon-btn {
+      background: rgba(102, 126, 234, 0.1);
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .icon-btn:hover {
+      background: rgba(102, 126, 234, 0.2);
+      transform: scale(1.05);
+    }
+
+    .icon {
+      fill: #667eea;
+    }
+
+    #body {
+      flex: 1;
+      background: #ffffff;
+      padding: 30px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .user-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
+    }
+
+    .user-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .avatar-text {
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+    }
+
+    .user-info-grid {
+      flex: 1;
+      display: grid;
+      gap: 12px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 16px;
+      color: white;
+      font-weight: 600;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border: 2px solid #f0f0f0;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card.streak { border-color: #ff9500; }
+    .stat-card.gem { border-color: #667eea; }
+    .stat-card.xp { border-color: #ffd700; }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      padding: 8px;
+      border-radius: 10px;
+    }
+
+    .stat-card.streak .stat-icon { background: #fff3e0; fill: #ff9500; }
+    .stat-card.gem .stat-icon { background: #f0f4ff; fill: #667eea; }
+    .stat-card.xp .stat-icon { background: #fffef0; fill: #ffd700; }
+
+    .stat-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    #action-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .modern-select {
+      flex: 1;
+      padding: 14px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      background: white;
+      color: #333;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .modern-select:hover {
+      border-color: #667eea;
+    }
+
+    .modern-select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .action-btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .start-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .start-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .stop-btn {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    }
+
+    .stop-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .btn-icon {
+      fill: currentColor;
+    }
+
+    .notify-box {
+      background: linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%);
+      border: 2px solid #667eea;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      min-height: 80px;
+    }
+
+    .notify-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .notify-text {
+      flex: 1;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    #footer {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 16px;
+      text-align: center;
+      border-top: 1px solid rgba(102, 126, 234, 0.1);
+    }
+
+    .footer-text {
+      color: #667eea;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    #overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 9998;
+    }
+
+    #floating-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+      z-index: 10000;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      color: white;
+    }
+
+    #floating-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+    }
+
+    #settings-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-content {
+      width: 90vw;
+      max-width: 700px;
+      max-height: 80vh;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 24px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-header .label {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .modal-header .icon-btn {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .modal-header .icon-btn .icon {
+      fill: white;
+    }
+
+    .modal-body {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .settings-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .settings-group h3 {
+      font-size: 16px;
+      color: #667eea;
+      font-weight: 700;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #f0f0f0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: #f8f9ff;
+      border-radius: 12px;
+      gap: 16px;
+    }
+
+    .setting-item span {
+      flex: 1;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .toggle-switch {
+      width: 48px;
+      height: 24px;
+      cursor: pointer;
+      accent-color: #667eea;
+    }
+
+    .number-input {
+      width: 100px;
+      padding: 8px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .number-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .setting-btn {
+      padding: 8px 16px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      background: white;
+      color: #667eea;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-btn:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .setting-btn.danger {
+      border-color: #ff6b6b;
+      color: #ff6b6b;
+    }
+
+    .setting-btn.danger:hover {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .setting-item a {
+      color: #667eea;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .setting-item a:hover {
+      border-bottom-color: #667eea;
+    }
+
+    .modal-footer {
+      padding: 20px 30px;
+      background: #f8f9ff;
+      display: flex;
+      justify-content: flex-end;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .save-btn {
+      padding: 12px 32px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .muted {
+      color: #999;
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    .blur {
+      filter: blur(8px);
+      user-select: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .disabled {
+      opacity: 0.5;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+
+    code {
+      display: block;
+      background: #f5f5f5;
+      border-left: 4px solid #667eea;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #333;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    /* Scrollbar styling */
+    #body::-webkit-scrollbar,
+    .modal-body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #body::-webkit-scrollbar-track,
+    .modal-body::-webkit-scrollbar-track {
+      background: #f0f0f0;
+      border-radius: 4px;
+    }
+
+    #body::-webkit-scrollbar-thumb,
+    .modal-body::-webkit-scrollbar-thumb {
+      background: #667eea;
+      border-radius: 4px;
+    }
+
+    #body::-webkit-scrollbar-thumb:hover,
+    .modal-body::-webkit-scrollbar-thumb:hover {
+      background: #764ba2;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      #container {
+        width: 95vw;
+        max-height: 95vh;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #action-row {
+        flex-direction: column;
+      }
+
+      .user-card {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+  `;
+
+  const log = (message) => {
+    if (typeof GM_log !== "undefined") {
+      GM_log(message);
+    } else {
+      console.log("[DuoFarmer]", message);
+    }
+  };
+
+  const logError = (error, context = "") => {
+    const message = error?.message || error?.toString() || "Unknown error";
+    const fullMessage = context ? `[${context}] ${message}` : message;
+    log(fullMessage);
+  };
+
+  const delay = (ms) => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
+
+  const toTimestamp = (dateStr) => {
+    return Math.floor(new Date(dateStr).getTime() / 1000);
+  };
+
+  const getCurrentUnixTimestamp = () => {
+    return Math.floor(Date.now() / 1000);
+  };
+
+  const getJwtToken = () => {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.startsWith("jwt_token=")) {
+        return cookie.substring("jwt_token=".length);
+      }
+    }
+    return null;
+  };
+
+  const decodeJwtToken = (token) => {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64).split("").map(function(c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join("")
+    );
+    return JSON.parse(jsonPayload);
+  };
+
+  const formatHeaders = (jwtToken) => {
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwtToken}`,
+      "User-Agent": navigator.userAgent
+    };
+  };
+
+  const extractSkillId = (currentCourse) => {
+    const sections = currentCourse?.pathSectioned || [];
+    for (const section of sections) {
+      const units = section.units || [];
+      for (const unit of units) {
+        const levels = unit.levels || [];
+        for (const level of levels) {
+          const skillId = level.pathLevelMetadata?.skillId || level.pathLevelClientData?.skillId;
+          if (skillId) return skillId;
+        }
+      }
+    }
+    return null;
+  };
+
+  class ApiService {
+    constructor(jwt, defaultHeaders, userInfo, sub) {
+      this.jwt = jwt;
+      this.defaultHeaders = defaultHeaders;
+      this.userInfo = userInfo;
+      this.sub = sub;
+    }
+
+    static async getUserInfo(userSub, headers) {
+      const userInfoUrl = `https://www.duolingo.com/2017-06-30/users/${userSub}?fields=id,username,fromLanguage,learningLanguage,streak,totalXp,level,numFollowers,numFollowing,gems,creationDate,streakData,privacySettings,currentCourse{pathSectioned{units{levels{pathLevelMetadata{skillId}}}}}`;
+      const response = await fetch(userInfoUrl, { method: "GET", headers });
+      return await response.json();
+    }
+
+    async sendRequest({ url, payload, headers, method = "PUT" }) {
+      try {
+        const res = await fetch(url, {
+          method,
+          headers,
+          body: payload ? JSON.stringify(payload) : void 0
+        });
+        return res;
+      } catch (error) {
+        return error;
+      }
+    }
+
+    async setPrivacyStatus(privacyStatus) {
+      const patchUrl = `https://www.duolingo.com/2017-06-30/users/${this.sub}/privacy-settings?fields=privacySettings`;
+      const patchBody = {
+        "DISABLE_SOCIAL": privacyStatus
+      };
+      return await this.sendRequest({ url: patchUrl, payload: patchBody, headers: this.defaultHeaders, method: "PATCH" });
+    }
+
+    async farmGemOnce() {
+      const idReward = "SKILL_COMPLETION_BALANCED-dd2495f4_d44e_3fc3_8ac8_94e2191506f0-2-GEMS";
+      const patchUrl = `https://www.duolingo.com/2017-06-30/users/${this.sub}/rewards/${idReward}`;
+      const patchBody = {
+        consumed: true,
+        learningLanguage: this.userInfo.learningLanguage,
+        fromLanguage: this.userInfo.fromLanguage
+      };
+      return await this.sendRequest({ url: patchUrl, payload: patchBody, headers: this.defaultHeaders, method: "PATCH" });
+    }
+
+    async farmStoryOnce(config = {}) {
+      const startTime = getCurrentUnixTimestamp();
+      const fromLanguage = this.userInfo.fromLanguage;
+      const completeUrl = `https://stories.duolingo.com/api2/stories/en-${fromLanguage}-the-passport/complete`;
+      const storyPayload = {
+        awardXp: true,
+        isFeaturedStoryInPracticeHub: false,
+        completedBonusChallenge: true,
+        mode: "READ",
+        isV2Redo: false,
+        isV2Story: false,
+        isLegendaryMode: true,
+        masterVersion: false,
+        maxScore: 0,
+        numHintsUsed: 0,
+        score: 0,
+        startTime,
+        fromLanguage,
+        learningLanguage: this.userInfo.learningLanguage,
+        hasXpBoost: false,
+        ...config.storyPayload || {}
+      };
+      return await this.sendRequest({ url: completeUrl, payload: storyPayload, headers: this.defaultHeaders, method: "POST" });
+    }
+
+    async farmSessionOnce(config = {}) {
+      const startTime = config.startTime || getCurrentUnixTimestamp();
+      const endTime = config.endTime || startTime + 60;
+      const sessionPayload = {
+        challengeTypes: [],
+        fromLanguage: this.userInfo.fromLanguage,
+        learningLanguage: this.userInfo.learningLanguage,
+        type: "GLOBAL_PRACTICE",
+        ...config.sessionPayload || {}
+      };
+      const sessionRes = await this.sendRequest({ url: "https://www.duolingo.com/2017-06-30/sessions", payload: sessionPayload, headers: this.defaultHeaders, method: "POST" });
+      const sessionData = await sessionRes.json();
+      const updateSessionPayload = {
+        id: sessionData.id,
+        metadata: sessionData.metadata,
+        type: sessionData.type,
+        fromLanguage: this.userInfo.fromLanguage,
+        learningLanguage: this.userInfo.learningLanguage,
+        challenges: [],
+        adaptiveChallenges: [],
+        sessionExperimentRecord: [],
+        experiments_with_treatment_contexts: [],
+        adaptiveInterleavedChallenges: [],
+        sessionStartExperiments: [],
+        trackingProperties: [],
+        ttsAnnotations: [],
+        heartsLeft: 0,
+        startTime,
+        enableBonusPoints: false,
+        endTime,
+        failed: false,
+        maxInLessonStreak: 9,
+        shouldLearnThings: true,
+        ...config.updateSessionPayload || {}
+      };
+      const updateRes = await this.sendRequest({ url: `https://www.duolingo.com/2017-06-30/sessions/${sessionData.id}`, payload: updateSessionPayload, headers: this.defaultHeaders, method: "PUT" });
+      return updateRes;
+    }
+  }
+
+  class SettingsManager {
+    constructor(shadowRoot, apiService = null) {
+      this.shadowRoot = shadowRoot;
+      this.apiService = apiService;
+      this.DEFAULT_SETTINGS = {
+        autoOpenUI: false,
+        autoStart: false,
+        defaultOption: 1,
+        hideUsername: false,
+        keepScreenOn: false,
+        delayTime: 500,
+        retryTime: 1000,
+        autoStopTime: 0,
+        darkMode: false,
+        compactUI: false,
+        showProgress: false,
+        fontSize: "medium"
+      };
+      this.settings = this.loadSettings();
+    }
+
+    loadSettings() {
+      try {
+        const saved = localStorage.getItem("DuoFarmerSettings");
+        if (saved) {
+          return { ...this.DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        }
+        return { ...this.DEFAULT_SETTINGS };
+      } catch (error) {
+        return { ...this.DEFAULT_SETTINGS };
+      }
+    }
+
+    saveSettings(settings) {
+      this.settings = settings;
+      localStorage.setItem("DuoFarmerSettings", JSON.stringify(settings));
+    }
+
+    getSettings() {
+      return { ...this.settings };
+    }
+
+    loadSettingsToUI() {
+      const elements = this.getElements();
+      if (elements.autoOpenUI) elements.autoOpenUI.checked = this.settings.autoOpenUI;
+      if (elements.autoStart) elements.autoStart.checked = this.settings.autoStart;
+      if (elements.defaultOption) elements.defaultOption.value = this.settings.defaultOption.toString();
+      if (elements.hideUsername) elements.hideUsername.checked = this.settings.hideUsername;
+      if (elements.keepScreenOn) elements.keepScreenOn.checked = this.settings.keepScreenOn;
+      if (elements.delayTime) elements.delayTime.value = this.settings.delayTime;
+      if (elements.retryTime) elements.retryTime.value = this.settings.retryTime;
+      if (elements.autoStopTime) elements.autoStopTime.value = this.settings.autoStopTime;
+      if (elements.darkMode) elements.darkMode.checked = this.settings.darkMode;
+      if (elements.compactUI) elements.compactUI.checked = this.settings.compactUI;
+      if (elements.showProgress) elements.showProgress.checked = this.settings.showProgress;
+      if (elements.fontSize) elements.fontSize.value = this.settings.fontSize;
+    }
+
+    saveSettingsFromUI() {
+      const elements = this.getElements();
+      const settings = {
+        autoOpenUI: elements.autoOpenUI?.checked || false,
+        autoStart: elements.autoStart?.checked || false,
+        defaultOption: parseInt(elements.defaultOption?.value) || 1,
+        hideUsername: elements.hideUsername?.checked || false,
+        keepScreenOn: elements.keepScreenOn?.checked || false,
+        delayTime: Math.max(100, Math.min(10000, parseInt(elements.delayTime?.value) || 500)),
+        retryTime: Math.max(100, Math.min(10000, parseInt(elements.retryTime?.value) || 1000)),
+        autoStopTime: parseInt(elements.autoStopTime?.value) || 0,
+        darkMode: elements.darkMode?.checked || false,
+        compactUI: elements.compactUI?.checked || false,
+        showProgress: elements.showProgress?.checked || false,
+        fontSize: elements.fontSize?.value || "medium"
+      };
+      this.saveSettings(settings);
+      return settings;
+    }
+
+    getElements() {
+      return {
+        autoOpenUI: this.shadowRoot.getElementById("auto-open-ui"),
+        autoStart: this.shadowRoot.getElementById("auto-start"),
+        defaultOption: this.shadowRoot.getElementById("default-option"),
+        hideUsername: this.shadowRoot.getElementById("hide-username"),
+        keepScreenOn: this.shadowRoot.getElementById("keep-screen-on"),
+        delayTime: this.shadowRoot.getElementById("delay-time"),
+        retryTime: this.shadowRoot.getElementById("retry-time"),
+        autoStopTime: this.shadowRoot.getElementById("auto-stop-time"),
+        darkMode: this.shadowRoot.getElementById("dark-mode"),
+        compactUI: this.shadowRoot.getElementById("compact-ui"),
+        showProgress: this.shadowRoot.getElementById("show-progress"),
+        fontSize: this.shadowRoot.getElementById("font-size"),
+        saveSettings: this.shadowRoot.getElementById("save-settings"),
+        quickLogout: this.shadowRoot.getElementById("quick-logout"),
+        resetTheme: this.shadowRoot.getElementById("reset-theme"),
+        getJwtToken: this.shadowRoot.getElementById("get-jwt-token"),
+        resetSetting: this.shadowRoot.getElementById("reset-setting"),
+        settingsContainer: this.shadowRoot.getElementById("settings-container"),
+        setAccountPublic: this.shadowRoot.getElementById("set-account-public"),
+        setAccountPrivate: this.shadowRoot.getElementById("set-account-private")
+      };
+    }
+
+    addEventListeners() {
+      const elements = this.getElements();
+      elements.saveSettings.addEventListener("click", () => {
+        this.saveSettingsFromUI();
+        alert("Settings saved successfully, reload the page to apply changes!");
+        confirm("Reload now?") && location.reload();
+      });
+      elements.quickLogout.addEventListener("click", () => {
+        if (confirm("Are you sure you want to logout?")) {
+          window.location.href = "https://www.duolingo.com/logout";
+        }
+      });
+      elements.resetTheme?.addEventListener("click", () => {
+        // Not implemented in new UI
+      });
+      elements.getJwtToken.addEventListener("click", () => {
+        const token = getJwtToken();
+        if (token) {
+          confirm(`Your JWT Token:\n\n${token}\n\nCopy to clipboard?`) && navigator.clipboard.writeText(token);
+        }
+      });
+      elements.resetSetting.addEventListener("click", () => {
+        if (confirm("Reset all settings to default? This cannot be undone.")) {
+          localStorage.removeItem("DuoFarmerSettings");
+          this.settings = { ...this.DEFAULT_SETTINGS };
+          this.loadSettingsToUI();
+          alert("All settings reset successfully! Reload to apply changes.");
+        }
+      });
+      elements.setAccountPublic.addEventListener("click", async () => {
+        if (confirm("Are you sure you want to set your account to public?")) {
+          try {
+            await this.apiService.setPrivacyStatus(false);
+            alert("Account set to public successfully! Reload the page to see changes.");
+          } catch (error) {
+            alert("Failed to set account to public: " + error.message);
+          }
+        }
+      });
+      elements.setAccountPrivate.addEventListener("click", async () => {
+        if (confirm("Are you sure you want to set your account to private?")) {
+          try {
+            await this.apiService.setPrivacyStatus(true);
+            alert("Account set to private successfully! Reload the page to see changes.");
+          } catch (error) {
+            alert("Failed to set account to private: " + error.message);
+          }
+        }
+      });
+    }
+
+    addEventSettings(container) {
+      const elements = this.getElements();
+      const settingsBtn = this.shadowRoot.getElementById("settings-btn");
+      const settingsContainer = elements.settingsContainer;
+      const settingsClose = this.shadowRoot.getElementById("settings-close");
+      const toggleModal = (modalElement, mainElement) => ({
+        show: () => {
+          mainElement.style.display = "none";
+          modalElement.style.display = "flex";
+        },
+        hide: () => {
+          modalElement.style.display = "none";
+          mainElement.style.display = "flex";
+        }
+      });
+      const settingsModal = toggleModal(settingsContainer, container);
+      settingsBtn.addEventListener("click", settingsModal.show);
+      settingsClose.addEventListener("click", settingsModal.hide);
+    }
+
+    loadDefaultFarmingOption(optionsArray) {
+      const select = this.shadowRoot.getElementById("select-option");
+      const optionIndex = this.settings.defaultOption;
+      select.selectedIndex = optionIndex;
+    }
+
+    populateDefaultOptionSelect(optionsArray) {
+      const select = this.shadowRoot.getElementById("default-option");
+      select.innerHTML = "";
+      optionsArray.forEach((opt, index) => {
+        const option = document.createElement("option");
+        option.value = index.toString();
+        option.textContent = opt.label;
+        if (opt.disabled) option.disabled = true;
+        select.appendChild(option);
+      });
+    }
+  }
+
+  let runtimeSettings = {
+    delayTime: 500,
+    retryTime: 1000,
+    autoStopTime: 0
+  };
+  let jwt = null;
+  let defaultHeaders = null;
+  let userInfo = null;
+  let sub = null;
+  let skillId = null;
+  let isRunning = false;
+  let shadowRoot = null;
+  let apiService = null;
+  let settingsManager = null;
+  let farmOptions = [];
+  let autoStopTimerId = null;
+
+  const getElements = () => {
+    return {
+      startBtn: shadowRoot.getElementById("start-btn"),
+      stopBtn: shadowRoot.getElementById("stop-btn"),
+      select: shadowRoot.getElementById("select-option"),
+      floatingBtn: shadowRoot.getElementById("floating-btn"),
+      container: shadowRoot.getElementById("container"),
+      overlay: shadowRoot.getElementById("overlay"),
+      notify: shadowRoot.getElementById("notify"),
+      username: shadowRoot.getElementById("username"),
+      from: shadowRoot.getElementById("from"),
+      learn: shadowRoot.getElementById("learn"),
+      streak: shadowRoot.getElementById("streak"),
+      gem: shadowRoot.getElementById("gem"),
+      xp: shadowRoot.getElementById("xp"),
+      settingsBtn: shadowRoot.getElementById("settings-btn"),
+      settingsContainer: shadowRoot.getElementById("settings-container"),
+      settingsClose: shadowRoot.getElementById("settings-close"),
+      userInfoDisplay: shadowRoot.getElementById("user-info-display"),
+      setAccountPublic: shadowRoot.getElementById("set-account-public"),
+      setAccountPrivate: shadowRoot.getElementById("set-account-private")
+    };
+  };
+
+  const setRunningState = (running) => {
+    isRunning = running;
+    const { startBtn, stopBtn, select } = getElements();
+    if (running) {
+      startBtn.hidden = true;
+      stopBtn.hidden = false;
+      stopBtn.disabled = true;
+      stopBtn.classList.add("disabled");
+      select.disabled = true;
+    } else {
+      stopBtn.hidden = true;
+      startBtn.hidden = false;
+      startBtn.disabled = true;
+      startBtn.classList.add("disabled");
+      select.disabled = false;
+      if (autoStopTimerId) {
+        clearTimeout(autoStopTimerId);
+        autoStopTimerId = null;
+      }
+    }
+    setTimeout(() => {
+      const { startBtn: btn, stopBtn: stop } = getElements();
+      btn.classList.remove("disabled");
+      btn.disabled = false;
+      stop.classList.remove("disabled");
+      stop.disabled = false;
+    }, 3000);
+  };
+
+  const disableAllControls = (notifyMessage = null) => {
+    const { startBtn, stopBtn, select } = getElements();
+    startBtn.disabled = true;
+    startBtn.classList.add("disabled");
+    stopBtn.disabled = true;
+    select.disabled = true;
+    if (notifyMessage) {
+      updateNotify(notifyMessage);
+    }
+  };
+
+  const initInterface = () => {
+    const container = document.createElement("div");
+    shadowRoot = container.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = cssText;
+    shadowRoot.appendChild(style);
+    const content = document.createElement("div");
+    content.innerHTML = templateRaw;
+    shadowRoot.appendChild(content);
+    document.body.appendChild(container);
+
+    const settingsContainer = shadowRoot.getElementById("settings-container");
+    if (settingsContainer) {
+      settingsContainer.style.display = "none";
+    }
+
+    const requiredElements = [
+      "start-btn",
+      "stop-btn",
+      "select-option",
+      "floating-btn",
+      "container",
+      "overlay",
+      "notify"
+    ];
+    for (const id of requiredElements) {
+      if (!shadowRoot.getElementById(id)) {
+        throw new Error(`Required UI element '${id}' not found in template. Template may be corrupted.`);
+      }
+    }
+  };
+
+  const showElement = (element) => {
+    if (element) element.style.display = "flex";
+  };
+
+  const hideElement = (element) => {
+    if (element) element.style.display = "none";
+  };
+
+  const setInterfaceVisible = (visible) => {
+    const { container, overlay } = getElements();
+    if (visible) {
+      showElement(container);
+      showElement(overlay);
+    } else {
+      hideElement(container);
+      hideElement(overlay);
+    }
+  };
+
+  const addEventFloatingBtn = () => {
+    const { floatingBtn } = getElements();
+    floatingBtn.addEventListener("click", () => {
+      if (isRunning) {
+        if (confirm("Hacklingo is farming. Do you want to stop and hide UI?")) {
+          setRunningState(false);
+          setInterfaceVisible(false);
+        }
+        return;
+      }
+      toggleInterface();
+    });
+  };
+
+  const addEventStartBtn = () => {
+    const { startBtn, select } = getElements();
+    startBtn.addEventListener("click", async () => {
+      setRunningState(true);
+      if (runtimeSettings.autoStopTime > 0) {
+        autoStopTimerId = setTimeout(() => {
+          alert(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+          updateNotify(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+          setRunningState(false);
+        }, runtimeSettings.autoStopTime * 60 * 1000);
+      }
+      const selected = select.options[select.selectedIndex];
+      const optionData = {
+        type: selected.getAttribute("data-type"),
+        amount: Number(selected.getAttribute("data-amount")),
+        value: selected.value,
+        label: selected.textContent,
+        config: selected.getAttribute("data-config") ? JSON.parse(selected.getAttribute("data-config")) : {}
+      };
+      await farmSelectedOption(optionData);
+    });
+  };
+
+  const addEventStopBtn = () => {
+    const { stopBtn } = getElements();
+    stopBtn.addEventListener("click", () => {
+      setRunningState(false);
+    });
+  };
+
+  const isInterfaceVisible = () => {
+    const { container } = getElements();
+    return container.style.display !== "none" && container.style.display !== "";
+  };
+
+  const toggleInterface = () => {
+    setInterfaceVisible(!isInterfaceVisible());
+  };
+
+  const addEventListeners = () => {
+    addEventStartBtn();
+    addEventStopBtn();
+    const { container } = getElements();
+    settingsManager.addEventSettings(container);
+    settingsManager.addEventListeners();
+  };
+
+  const populateOptions = () => {
+    const select = shadowRoot.getElementById("select-option");
+    select.innerHTML = "";
+    farmOptions.forEach((opt) => {
+      const option = document.createElement("option");
+      option.value = opt.value;
+      option.textContent = opt.label;
+      option.setAttribute("data-type", opt.type);
+      if (opt.amount != null) option.setAttribute("data-amount", String(opt.amount));
+      if (opt.config) option.setAttribute("data-config", JSON.stringify(opt.config));
+      if (opt.disabled) option.disabled = true;
+      select.appendChild(option);
+    });
+  };
+
+  const updateNotify = (message) => {
+    const notifyText = shadowRoot.querySelector('.notify-text');
+    if (notifyText) {
+      const now = new Date().toLocaleTimeString();
+      notifyText.innerText = `[${now}] ${message}`;
+      log(`[${now}] ${message}`);
+    }
+  };
+
+  const updateUserInfo = () => {
+    const elements = getElements();
+    if (userInfo) {
+      elements.username.innerText = userInfo.username;
+      elements.from.innerText = userInfo.fromLanguage;
+      elements.learn.innerText = userInfo.learningLanguage;
+      elements.streak.innerText = userInfo.streak;
+      elements.gem.innerText = userInfo.gems;
+      elements.xp.innerText = userInfo.totalXp;
+
+      const avatarInitial = shadowRoot.getElementById('avatar-initial');
+      if (avatarInitial && userInfo.username) {
+        avatarInitial.innerText = userInfo.username.charAt(0).toUpperCase();
+      }
+
+      if (userInfo.privacySettings &&
+          (userInfo.privacySettings.includes("DISABLE_FRIENDS_QUESTS") ||
+           userInfo.privacySettings.includes("DISABLE_LEADERBOARDS"))) {
+        hideElement(elements.setAccountPrivate);
+      } else {
+        hideElement(elements.setAccountPublic);
+      }
+
+      elements.userInfoDisplay.innerText = JSON.stringify({
+        id: userInfo.id,
+        username: userInfo.username,
+        fromLanguage: userInfo.fromLanguage,
+        learningLanguage: userInfo.learningLanguage,
+        streak: userInfo.streak,
+        gems: userInfo.gems,
+        totalXp: userInfo.totalXp,
+        creationDate: userInfo.creationDate,
+        skillId,
+        jwt: "hidden - use get jwt button to view",
+        sub,
+        privacySettings: userInfo.privacySettings,
+        streakData: userInfo.streakData
+      }, null, 2);
+    }
+  };
+
+  const updateFarmResult = (type, farmedAmount) => {
+    switch (type) {
+      case "gem":
+        userInfo = { ...userInfo, gems: userInfo.gems + farmedAmount };
+        updateNotify(`You got ${farmedAmount} gem!!!`);
+        break;
+      case "xp":
+        userInfo = { ...userInfo, totalXp: userInfo.totalXp + farmedAmount };
+        updateNotify(`You got ${farmedAmount} XP!!!`);
+        break;
+      case "streak":
+        userInfo = { ...userInfo, streak: userInfo.streak + farmedAmount };
+        updateNotify(`You got ${farmedAmount} streak! (maybe some xp too, idk)`);
+        break;
+    }
+    updateUserInfo();
+  };
+
+  const gemFarmingLoop = async () => {
+    const gemFarmed = 30;
+    while (isRunning) {
+      try {
+        await apiService.farmGemOnce(userInfo);
+        updateFarmResult("gem", gemFarmed);
+        await delay(runtimeSettings.delayTime);
+      } catch (error) {
+        updateNotify(`Error ${error.status}! Please report in telegram group!`);
+        await delay(runtimeSettings.retryTime);
+      }
+    }
+  };
+
+  const xpFarmingLoop = async (value, amount, config = {}) => {
+    while (isRunning) {
+      try {
+        let response;
+        if (value === "session") {
+          response = await apiService.farmSessionOnce(config);
+        } else if (value === "story") {
+          response = await apiService.farmStoryOnce(config);
+        }
+        if (response.status > 400) {
+          updateNotify(`Something went wrong! Pls try other farming methods.
+If you are using story method, u should try with English course!`);
+          await delay(runtimeSettings.retryTime);
+          continue;
+        }
+        const responseData = await response.json();
+        const xpFarmed = (responseData?.awardedXp) || (responseData?.xpGain) || 0;
+        updateFarmResult("xp", xpFarmed);
+        await delay(runtimeSettings.delayTime);
+      } catch (error) {
+        updateNotify(`Error ${error.status}! Please report in telegram group!`);
+        await delay(runtimeSettings.retryTime);
+      }
+    }
+  };
+
+  const streakFarmingLoop = async () => {
+    const hasStreak = !!userInfo.streakData.currentStreak;
+    const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : new Date();
+    const startFarmStreakTimestamp = toTimestamp(startStreakDate);
+    let currentTimestamp = hasStreak ? startFarmStreakTimestamp - 86400 : startFarmStreakTimestamp;
+    while (isRunning) {
+      try {
+        const sessionRes = await apiService.farmSessionOnce({ startTime: currentTimestamp, endTime: currentTimestamp + 60 });
+        if (sessionRes) {
+          currentTimestamp -= 86400;
+          updateFarmResult("streak", 1);
+          await delay(runtimeSettings.delayTime);
+        } else {
+          updateNotify("Failed to farm streak session, I'm trying again...");
+          await delay(runtimeSettings.retryTime);
+          continue;
+        }
+      } catch (error) {
+        updateNotify(`Error in farmStreak: ${(error?.message) || error}`);
+        await delay(runtimeSettings.retryTime);
+        continue;
+      }
+    }
+  };
+
+  const farmSelectedOption = async (option) => {
+    const { type, value, amount, config } = option;
+    switch (type) {
+      case "gem":
+        gemFarmingLoop();
+        break;
+      case "xp":
+        xpFarmingLoop(value, amount, config);
+        break;
+      case "streak":
+        streakFarmingLoop();
+        break;
+    }
+  };
+
+  const loadSavedSettings = (settings) => {
+    runtimeSettings = { ...runtimeSettings, ...settings };
+    const elements = getElements();
+    if (settings.autoOpenUI) {
+      setInterfaceVisible(true);
+    }
+    if (settings.autoStart) {
+      setInterfaceVisible(true);
+      elements.startBtn.click();
+    }
+    if (settings.hideUsername) {
+      elements.username.classList.add("blur");
+    }
+    if (settings.keepScreenOn && "wakeLock" in navigator) {
+      navigator.wakeLock.request("screen").then((wakeLock) => {
+        log("Screen wake lock active");
+      });
+    }
+  };
+
+  const initVariables = async () => {
+    jwt = getJwtToken();
+    if (!jwt) {
+      disableAllControls("Please login to Duolingo and reload!");
+      return;
+    }
+    defaultHeaders = formatHeaders(jwt);
+    const decodedJwt = decodeJwtToken(jwt);
+    sub = decodedJwt.sub;
+    userInfo = await ApiService.getUserInfo(sub, defaultHeaders);
+    apiService = new ApiService(jwt, defaultHeaders, userInfo, sub);
+    settingsManager = new SettingsManager(shadowRoot, apiService);
+    skillId = extractSkillId(userInfo.currentCourse || {});
+    farmOptions = [
+      { type: "separator", label: "⟡ GEM FARMING ⟡", value: "", disabled: true },
+      { type: "gem", label: "Gem 30", value: "fixed", amount: 30 },
+      { type: "separator", label: "⟡ XP SESSION FARMING ⟡", value: "", disabled: true },
+      { type: "separator", label: "(slow, safe, any language)", value: "", disabled: true },
+      { type: "xp", label: "XP 10", value: "session", amount: 10, config: {} },
+      { type: "xp", label: "XP 20", value: "session", amount: 20, config: { updateSessionPayload: { hasBoost: true } } },
+      { type: "xp", label: "XP 40", value: "session", amount: 40, config: { updateSessionPayload: { hasBoost: true, type: "TARGET_PRACTICE" } } },
+      { type: "xp", label: "XP 50", value: "session", amount: 50, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10, type: "TARGET_PRACTICE" } } },
+      { type: "xp", label: "XP 110", value: "session", amount: 110, config: { sessionPayload: { type: "UNIT_TEST", skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { type: "UNIT_TEST", hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0 } } }, disabled: !skillId },
+      { type: "separator", label: "⟡ XP STORY FARMING ⟡", value: "", disabled: true },
+      { type: "separator", label: "(fast, unsafe, English only)", value: "", disabled: true },
+      { type: "xp", label: "XP 50", value: "story", amount: 50, config: {} },
+      { type: "xp", label: "XP 100", value: "story", amount: 100, config: { storyPayload: { happyHourBonusXp: 50 } } },
+      { type: "xp", label: "XP 200", value: "story", amount: 200, config: { storyPayload: { happyHourBonusXp: 150 } } },
+      { type: "xp", label: "XP 300", value: "story", amount: 300, config: { storyPayload: { happyHourBonusXp: 250 } } },
+      { type: "xp", label: "XP 400", value: "story", amount: 400, config: { storyPayload: { happyHourBonusXp: 350 } } },
+      { type: "xp", label: "XP 499", value: "story", amount: 499, config: { storyPayload: { happyHourBonusXp: 449 } } },
+      { type: "separator", label: "⟡ STREAK FARMING ⟡", value: "", disabled: true },
+      { type: "streak", label: "Streak farm (test)", value: "farm" }
+    ];
+  };
+
+  const initSettings = () => {
+    settingsManager.populateDefaultOptionSelect(farmOptions);
+    settingsManager.loadDefaultFarmingOption(farmOptions);
+    settingsManager.loadSettingsToUI();
+  };
+
+  (async () => {
+    try {
+      initInterface();
+      setInterfaceVisible(false);
+      addEventFloatingBtn();
+      await initVariables();
+      populateOptions();
+      initSettings();
+      updateUserInfo();
+      addEventListeners();
+      loadSavedSettings(settingsManager.getSettings());
+      updateNotify('Hacklingo Pro ready! For safety, I suggest that you use 2nd accounts.\nLimited or no use of "Story Farming"!');
+    } catch (err) {
+      logError(err, "Hacklingo init error!");
+    }
+  })();
+})();
